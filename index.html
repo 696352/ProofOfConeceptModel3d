@@ -4,52 +4,16 @@
   <meta charset="UTF-8" />
   <title>3D Multi-Model Viewer</title>
   <style>
-    body { 
-      margin: 0; 
-      overflow: hidden; 
-      background-color: #eeeeee; 
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    
-    /* Loading Screen Styles */
+    body { margin: 0; overflow: hidden; background-color: #333; font-family: sans-serif; }
     #loading-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #111111;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 999;
-      color: white;
-      transition: opacity 0.8s ease;
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #111; display: flex; flex-direction: column;
+      justify-content: center; align-items: center; z-index: 999;
+      color: white; transition: opacity 0.5s;
     }
-
-    .loader-bar-container {
-      width: 250px;
-      height: 6px;
-      background: #333;
-      margin-top: 20px;
-      border-radius: 10px;
-      overflow: hidden;
-    }
-
-    #loader-bar {
-      width: 0%;
-      height: 100%;
-      background: linear-gradient(90deg, #00dbde 0%, #fc00ff 100%);
-      transition: width 0.3s ease;
-    }
-
-    #loading-text {
-      font-size: 1.2rem;
-      letter-spacing: 1px;
-    }
+    .bar { width: 200px; height: 4px; background: #444; margin-top: 10px; }
+    #progress { width: 0%; height: 100%; background: #00ffcc; transition: width 0.2s; }
   </style>
-
   <script type="importmap">
   {
     "imports": {
@@ -59,14 +23,11 @@
   }
   </script>
 </head>
-
 <body>
 
   <div id="loading-overlay">
-    <div id="loading-text">Initializing Models... 0%</div>
-    <div class="loader-bar-container">
-      <div id="loader-bar"></div>
-    </div>
+    <div id="status">Connecting to GitHub...</div>
+    <div class="bar"><div id="progress"></div></div>
   </div>
 
 <script type="module">
@@ -75,65 +36,101 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
-// --- SETUP ---
-const overlay = document.getElementById('loading-overlay');
-const loadingText = document.getElementById('loading-text');
-const loadingBar = document.getElementById('loader-bar');
-
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeeeeee);
 
 const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-// Positioned back and slightly up to see all three models
-camera.position.set(0, 5, 18); 
+camera.position.set(0, 5, 20);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-// Better lighting/color representation
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-// --- LIGHTING ---
-scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.5));
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
-dirLight.position.set(5, 10, 7);
-scene.add(dirLight);
+scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+const light = new THREE.DirectionalLight(0xffffff, 2);
+light.position.set(10, 10, 10);
+scene.add(light);
 
-// --- LOADING MANAGER ---
+// --- UPDATED MANAGER ---
 const manager = new THREE.LoadingManager();
 
-manager.onProgress = (url, itemsLoaded, itemsTotal) => {
-  const progress = (itemsLoaded / itemsTotal) * 100;
-  loadingBar.style.width = progress + '%';
-  loadingText.innerText = `Loading Assets... ${Math.round(progress)}%`;
+manager.onStart = (url) => {
+  console.log("Started loading:", url);
+};
+
+manager.onProgress = (url, loaded, total) => {
+  const p = (loaded / total) * 100;
+  document.getElementById('progress').style.width = p + '%';
+  document.getElementById('status').innerHTML = `Downloading: ${Math.round(p)}%`;
 };
 
 manager.onLoad = () => {
-  console.log("All models loaded successfully.");
-  overlay.style.opacity = '0';
-  setTimeout(() => {
-    overlay.style.display = 'none';
-  }, 800);
+  document.getElementById('loading-overlay').style.opacity = '0';
+  setTimeout(() => { 
+    document.getElementById('loading-overlay').style.display = 'none';
+    fitCamera();
+  }, 500);
 };
 
 manager.onError = (url) => {
-  console.error('There was an error loading ' + url);
-  loadingText.innerText = "Error loading models. Check console.";
-  loadingText.style.color = "#ff4444";
+  console.error("FAILED TO LOAD:", url);
+  alert("CRITICAL ERROR: Could not find " + url + "\n\nCheck your GitHub filenames!");
 };
 
-// --- LOADERS ---
-const dracoLoader = new DRACOLoader();
-dracoLoader.setDecoderPath("https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/");
+const draco = new DRACOLoader();
+// Using a more reliable CDN path for Draco
+draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
 
 const loader = new GLTFLoader(manager);
-loader.setDRACOLoader(dracoLoader);
+loader.setDRACOLoader(draco);
 
-// --- MODELS CONFIGURATION ---
-// IMPORTANT: Change these names to match your files in GitHub exactly!
-const modelPaths = ["color4.glb", "model2.glb", "model3
+// --- THE MODELS ---
+// 1. Ensure these are exactly as they appear in your GitHub file list
+// 2. Do NOT use a leading slash /
+const models = ["color4.glb", "model2.glb", "model3.glb"];
+const group = new THREE.Group(); 
+scene.add(group);
+
+models.forEach((path, i) => {
+  loader.load(path, (gltf) => {
+    const m = gltf.scene;
+    const b = new THREE.Box3().setFromObject(m);
+    const center = b.getCenter(new THREE.Vector3());
+    m.position.sub(center);
+
+    const wrapper = new THREE.Group();
+    wrapper.add(m);
+    wrapper.position.x = (i - 1) * 12; // Wider spacing
+    group.add(wrapper);
+  });
+});
+
+function fitCamera() {
+  const box = new THREE.Box3().setFromObject(group);
+  const center = box.getCenter(new THREE.Vector3());
+  const size = box.getSize(new THREE.Vector3());
+  const maxDim = Math.max(size.x, size.y, size.z);
+  camera.position.set(center.x, center.y + 2, maxDim * 1.5);
+  controls.target.copy(center);
+  controls.update();
+}
+
+window.addEventListener("resize", () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
