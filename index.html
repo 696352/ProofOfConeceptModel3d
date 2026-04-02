@@ -12,7 +12,7 @@ body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Oval Dropdown (LEFT like your first version) */
+/* Oval Dropdown (LEFT) */
 #ui-container {
   position: fixed;
   top: 20px;
@@ -210,8 +210,15 @@ function loadModel(filename) {
 
     scene.add(currentModel);
 
-    controls.reset();
-    camera.position.set(0, 0, maxDim * 2);
+    // --- CAMERA FIT LOGIC ---
+    const fov = camera.fov * (Math.PI / 180);
+    let cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+    cameraZ *= 1.4; // padding
+    camera.position.set(0, 0, cameraZ);
+    controls.target.set(0, 0, 0);
+    controls.minDistance = cameraZ * 0.5;
+    controls.maxDistance = cameraZ * 5;
+    controls.update();
 
     overlay.style.opacity = '0';
     setTimeout(() => overlay.style.display = 'none', 400);
