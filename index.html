@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <title>3D Model Viewer</title>
   <style>
-    /* Force background color immediately to prevent white/black flashes */
     body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: 'Segoe UI', sans-serif; }
     
+    /* Top UI Bar */
     #ui-container {
       position: fixed; top: 0; left: 0; width: 100%; height: 60px;
       background: rgba(255, 255, 255, 0.95); display: flex;
@@ -16,19 +16,21 @@
 
     select {
       padding: 10px 20px; font-size: 16px; border-radius: 5px;
-      border: 1px solid #bbb; cursor: pointer; background: white;
+      border: 1px solid #bbb; cursor: pointer; background: white; outline: none;
     }
 
+    /* Loading Overlay */
     #loading-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: #111; display: none; flex-direction: column;
       justify-content: center; align-items: center; z-index: 999;
-      color: white; opacity: 0; transition: opacity 0.3;
+      color: white; opacity: 0; transition: opacity 0.3s;
     }
 
     .bar-container { width: 250px; height: 6px; background: #333; margin-top: 15px; border-radius: 10px; overflow: hidden; }
     #progress-bar { width: 0%; height: 100%; background: #00ffcc; transition: width 0.2s; }
     
+    /* Error Notification */
     #error-msg {
       display: none; position: fixed; top: 70px; left: 50%; 
       transform: translateX(-50%); background: #ff4444; color: white; 
@@ -50,9 +52,9 @@
 
   <div id="ui-container">
     <select id="model-select">
-      <option value="" disabled selected>Select a Model</option>
+      <option value="" disabled selected>Select a Week</option>
       <option value="Week15Done-v1.glb">Week 15 Model</option>
-      <option value="Week9Done-v1.glb">Week 9 Model</option>
+      <option value="Week9-v1.glb">Week 9 Model</option>
       <option value="Week3.glb">Week 3 Model</option>
     </select>
   </div>
@@ -70,30 +72,27 @@ import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 
-console.log("Script initializing...");
-
 const select = document.getElementById('model-select');
 const overlay = document.getElementById('loading-overlay');
 const bar = document.getElementById('progress-bar');
 const status = document.getElementById('status-text');
 const errorUI = document.getElementById('error-msg');
 
-// --- RENDERER (Safe Mode) ---
+// --- RENDERER SETUP ---
 let renderer;
 try {
   renderer = new THREE.WebGLRenderer({ 
-    antialias: false, // Compatibility mode
+    antialias: false, 
     powerPreference: "high-performance",
-    precision: "mediump",
-    alpha: false 
+    precision: "mediump"
   });
   renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.setPixelRatio(1); // Cap pixel ratio for stability
-  renderer.setClearColor(0xeeeeee, 1); // Force gray clear color
+  renderer.setPixelRatio(1); 
+  renderer.setClearColor(0xeeeeee, 1); 
   document.body.appendChild(renderer.domElement);
 } catch (e) {
   status.innerHTML = "WebGL Error: GPU Context Lost.";
-  console.error(e);
+  console.error("Renderer Init Failed:", e);
 }
 
 const scene = new THREE.Scene();
@@ -105,6 +104,7 @@ camera.position.set(0, 2, 10);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
+// Lighting
 scene.add(new THREE.AmbientLight(0xffffff, 1.2));
 const light = new THREE.DirectionalLight(0xffffff, 1.0);
 light.position.set(5, 10, 7);
@@ -119,7 +119,7 @@ loader.setDRACOLoader(draco);
 let currentModel = null;
 
 function loadModel(filename) {
-  // Disposal logic to free VRAM
+  // Clear previous model data to save VRAM
   if (currentModel) {
     scene.remove(currentModel);
     currentModel.traverse((n) => {
@@ -131,27 +131,35 @@ function loadModel(filename) {
     });
   }
 
+  // Show UI
   overlay.style.display = 'flex';
   overlay.style.opacity = '1';
   bar.style.width = '0%';
+  status.style.color = "white";
+  status.innerText = "Fetching " + filename + "...";
 
   loader.load(filename, (gltf) => {
     currentModel = gltf.scene;
+    
+    // Auto-center and Scale
     const box = new THREE.Box3().setFromObject(currentModel);
     const size = box.getSize(new THREE.Vector3());
     const center = box.getCenter(new THREE.Vector3());
     currentModel.position.sub(center);
 
     const maxDim = Math.max(size.x, size.y, size.z);
-    const scale = 5.5 / maxDim;
+    const scale = 5.5 / (maxDim || 1); 
     currentModel.scale.set(scale, scale, scale);
 
     scene.add(currentModel);
+    
+    // Success - Hide UI
     overlay.style.opacity = '0';
     setTimeout(() => { overlay.style.display = 'none'; }, 400);
     
-    // Force immediate render to snap out of grey/black state
+    // Force immediate render
     renderer.render(scene, camera);
+    console.log("Loaded:", filename);
 
   }, (xhr) => {
     if (xhr.total > 0) {
@@ -160,11 +168,13 @@ function loadModel(filename) {
       status.innerText = `Loading... ${Math.round(p)}%`;
     }
   }, (err) => {
-    console.error(err);
-    status.innerText = "Load Failed (Check Filenames)";
+    console.error("Load error details:", err);
+    status.innerText = "ERROR: Cannot find " + filename;
+    status.style.color = "#ff4444";
   });
 }
 
+// Event Listeners
 select.addEventListener('change', (e) => loadModel(e.target.value));
 
 renderer.domElement.addEventListener("webglcontextlost", (e) => {
@@ -185,9 +195,8 @@ function animate() {
 }
 animate();
 
-// Initial manual render to "wake up" the canvas
+// Wake up the canvas
 renderer.render(scene, camera);
-console.log("Canvas wake-up call sent.");
 </script>
 </body>
 </html>
