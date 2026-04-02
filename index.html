@@ -4,10 +4,10 @@
   <meta charset="UTF-8" />
   <title>3D Model Viewer</title>
   <style>
-    /* Force background color immediately to prevent black flashes */
+    /* Force background color immediately */
     body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: 'Segoe UI', sans-serif; }
     
-    /* Top UI Bar */
+    /* Top UI Bar - THIS IS YOUR DROPDOWN CONTAINER */
     #ui-container {
       position: fixed; top: 0; left: 0; width: 100%; height: 60px;
       background: rgba(255, 255, 255, 0.95); display: flex;
@@ -34,4 +34,41 @@
     /* Error Notification */
     #error-msg {
       display: none; position: fixed; top: 70px; left: 50%; 
-      transform: translateX(-50%); background: #ff4444; color:
+      transform: translateX(-50%); background: #ff4444; color: white; 
+      padding: 12px 25px; border-radius: 5px; z-index: 1000; font-weight: bold;
+    }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+
+<body>
+
+  <div id="ui-container">
+    <select id="model-select">
+      <option value="" disabled selected>Select a Week</option>
+      <option value="Week15Done-v1.glb">Week 15 Model</option>
+      <option value="Week9-v1.glb">Week 9 Model</option>
+      <option value="Week3.glb">Week 3 Model</option>
+    </select>
+  </div>
+
+  <div id="error-msg">Graphics Error: Please restart Chrome or refresh.</div>
+
+  <div id="loading-overlay">
+    <div id="status-text">Connecting to GPU... 0%</div>
+    <div class="bar-container"><div id="progress-bar"></div></div>
+  </div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import {
