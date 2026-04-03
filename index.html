@@ -5,59 +5,126 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Portfolio Viewer</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: sans-serif; }
     
-    /* UI Container - Oval Dropdown and Fullscreen */
     #ui-container {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      z-index: 100;
-      display: flex;
-      gap: 12px;
-      align-items: center;
+      position: fixed; top: 20px; left: 20px; z-index: 100;
+      display: flex; gap: 12px; align-items: center;
     }
 
     select {
-      padding: 12px 25px;
-      font-size: 16px;
-      border-radius: 50px;
-      border: 1px solid #ccc;
-      background: white;
-      cursor: pointer;
-      outline: none;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      appearance: none;
-      -webkit-appearance: none;
-      background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 15px center;
-      background-size: 15px;
-      padding-right: 45px;
-      transition: all 0.3s ease;
+      padding: 12px 20px; font-size: 16px; border-radius: 50px;
+      border: 1px solid #ccc; background: white; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1); outline: none;
     }
 
     #fs-btn {
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      border: 1px solid #ccc;
-      background: white;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      transition: transform 0.2s;
+      width: 44px; height: 44px; border-radius: 50%; border: 1px solid #ccc;
+      background: white; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
     }
-    #fs-btn:hover { transform: scale(1.1); }
 
-    /* Interaction Hint */
     #hint-overlay {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.6);
-      color: white;
+      position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.6); color: white; padding: 10px 22px;
+      border-radius: 30px; pointer-events: none; transition: opacity 0.5s ease;
+      z-index: 10; font-size: 14px;
+    }
+
+    #loading-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(17, 17, 17, 0.9); display: none; flex-direction: column;
+      justify-content: center; align-items: center; z-index: 999; color: white;
+    }
+
+    .bar-container { width: 250px; height: 6px; background: #333; margin-top: 20px; border-radius: 10px; overflow: hidden; }
+    #progress-bar { width: 0%; height: 100%; background: #00ffcc; transition: width 0.2s ease; }
+  </style>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+  <div id="ui-container">
+    <select id="model-select">
+      <option value="" disabled selected>Select Week</option>
+      <option value="Week15Done-v1.glb">Week 15</option>
+      <option value="Week9-v1.glb">Week 9</option>
+      <option value="Week3.glb">Week 3</option>
+    </select>
+    <button id="fs-btn">⛶</button>
+  </div>
+
+  <div id="hint-overlay">Drag to Rotate • Scroll to Zoom</div>
+
+  <div id="loading-overlay">
+    <div id="status-text">Loading...</div>
+    <div class="bar-container"><div id="progress-bar"></div></div>
+  </div>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+
+const select = document.getElementById('model-select');
+const overlay = document.getElementById('loading-overlay');
+const bar = document.getElementById('progress-bar');
+const status = document.getElementById('status-text');
+const hint = document.getElementById('hint-overlay');
+
+// 1. Scene setup
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeeeeee);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
+camera.position.set(20, 20, 20);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.autoRotate = true;
+
+scene.add(new THREE.AmbientLight(0xffffff, 2));
+const sun = new THREE.DirectionalLight(0xffffff, 1);
+sun.position.set(10, 20, 10);
+scene.add(sun);
+
+// 2. Loaders
+const dracoLoader = new DRACOLoader();
+dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+const loader = new GLTFLoader();
+loader.setDRACOLoader(dracoLoader);
+
+let currentModel = null;
+
+function fitCameraToModel(model) {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+
+    model.position.x += (model.position.x - center.x);
+    model.position.y += (model.position.y - center.y);
+    model.position.z += (model.position.z - center.z);
+
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const fov = camera.fov * (Math.PI / 180);
+    let cameraDistance = Math.abs(maxDim / 2 / Math.tan(fov / 2));
+    
+    cameraDistance *= 1.5; 
+    camera.position.set(cameraDistance, cameraDistance / 2, cameraDistance);
+    camera.lookAt(0, 0, 0);
+    
+    controls.target.set(0, 0
