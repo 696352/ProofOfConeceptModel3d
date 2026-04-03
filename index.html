@@ -11,7 +11,13 @@
       --light-blue: #e7f1ff;
     }
 
-    body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    /* Gradient Background */
+    body { 
+      margin: 0; 
+      overflow: hidden; 
+      background: linear-gradient(180deg, #ffffff 0%, #d1e5ff 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+    }
     
     #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
 
@@ -26,7 +32,7 @@
     }
     select:hover { background: var(--light-blue); }
 
-    /* Reset Button & Keybind Hint */
+    /* Reset Button */
     #reset-btn {
       position: fixed;
       bottom: 20px;
@@ -54,7 +60,7 @@
       margin-left: 5px;
     }
 
-    /* Loading Overlay in Blue */
+    /* Loading Overlay */
     #loading-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
       background: rgba(0, 31, 63, 0.9); display: none; flex-direction: column; 
@@ -62,7 +68,6 @@
     }
     .bar-container { width: 200px; height: 6px; background: rgba(255,255,255,0.1); margin-top: 15px; border-radius: 10px; overflow: hidden; }
     #progress-bar { width: 0%; height: 100%; background: #00d4ff; transition: width 0.2s; }
-    #status-text { letter-spacing: 1px; font-weight: 300; }
   </style>
 </head>
 <body>
@@ -90,22 +95,26 @@ import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GL
 import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0xeeeeee);
+// Scene background is set to null so the CSS gradient shows through
+scene.background = null; 
 
-// Grid (Light blue tint for the lines)
 const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xcccccc);
 scene.add(grid);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
 camera.position.set(30, 30, 30);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
+const renderer = new THREE.WebGLRenderer({ 
+    antialias: true, 
+    alpha: true // Alpha true allows the CSS gradient to be visible
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
+controls.dampingFactor = 0.05;
 
 scene.add(new THREE.AmbientLight(0xffffff, 2));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -122,10 +131,16 @@ let defaultCameraPos = new THREE.Vector3(30, 30, 30);
 let defaultTarget = new THREE.Vector3(0, 0, 0);
 
 function resetCamera() {
-    // Smoother reset logic
+    // 1. Kill momentum/acceleration
+    controls.enableDamping = false; 
+    
+    // 2. Set hard positions
     camera.position.copy(defaultCameraPos);
     controls.target.copy(defaultTarget);
-    controls.update();
+    
+    // 3. Force update then turn damping back on for future movements
+    controls.update(); 
+    controls.enableDamping = true; 
 }
 
 function loadModel(filename) {
@@ -145,14 +160,12 @@ function loadModel(filename) {
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        // Align floor to grid
         currentModel.position.x = -center.x;
         currentModel.position.y = -box.min.y; 
         currentModel.position.z = -center.z;
 
         scene.add(currentModel);
 
-        // Calculate "Perfect" view for this specific house
         const maxDim = Math.max(size.x, size.y, size.z);
         const dist = maxDim * 1.5;
         
@@ -172,13 +185,11 @@ function loadModel(filename) {
     });
 }
 
-// LISTENERS
 window.addEventListener('keydown', (event) => {
     if (event.key.toLowerCase() === 'r') resetCamera();
 });
 
 document.getElementById('reset-btn').onclick = resetCamera;
-
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
 
 window.onresize = () => {
