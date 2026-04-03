@@ -2,16 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Portfolio Viewer</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: sans-serif; }
+    body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: 'Segoe UI', sans-serif; }
     #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
-    select { padding: 12px 20px; border-radius: 50px; border: 1px solid #ccc; cursor: pointer; }
-    #hint-overlay { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.5); color: white; padding: 8px 16px; border-radius: 20px; pointer-events: none; transition: opacity 0.5s; font-size: 13px; }
-    #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 999; color: white; }
-    .bar-container { width: 200px; height: 4px; background: #333; margin-top: 10px; }
-    #progress-bar { width: 0%; height: 100%; background: #00ffcc; }
+    select { padding: 12px 25px; border-radius: 50px; border: 1px solid #ccc; background: white; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    #fs-btn { width: 44px; height: 44px; border-radius: 50%; border: 1px solid #ccc; background: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    #hint-overlay { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.6); color: white; padding: 10px 22px; border-radius: 30px; pointer-events: none; transition: opacity 0.5s; font-size: 14px; z-index: 10; }
+    #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(17, 17, 17, 0.9); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 999; color: white; transition: opacity 0.4s; }
+    .bar-container { width: 250px; height: 6px; background: #333; margin-top: 20px; border-radius: 10px; overflow: hidden; }
+    #progress-bar { width: 0%; height: 100%; background: #00ffcc; transition: width 0.2s; }
   </style>
+
   <script type="importmap">
   {
     "imports": {
@@ -30,12 +33,13 @@
       <option value="Week9-v1.glb">Week 9</option>
       <option value="Week3.glb">Week 3</option>
     </select>
-    <button id="fs-btn" style="border-radius:50%; width:40px; height:40px; border:1px solid #ccc; cursor:pointer;">⛶</button>
+    <button id="fs-btn">⛶</button>
   </div>
 
   <div id="hint-overlay">Drag to Rotate • Scroll to Zoom</div>
+
   <div id="loading-overlay">
-    <div id="status-text">Loading...</div>
+    <div id="status-text">Loading Model...</div>
     <div class="bar-container"><div id="progress-bar"></div></div>
   </div>
 
@@ -51,26 +55,26 @@ const bar = document.getElementById('progress-bar');
 const status = document.getElementById('status-text');
 const hint = document.getElementById('hint-overlay');
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setClearColor(0xeeeeee);
-document.body.appendChild(renderer.domElement);
-
 const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeeeeee);
+
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 0, 15);
+camera.position.set(0, 2, 12); 
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.autoRotate = true;
-
-const stopAuto = () => { controls.autoRotate = false; hint.style.opacity = '0'; };
-renderer.domElement.addEventListener('mousedown', stopAuto);
+controls.autoRotateSpeed = 1.0;
+controls.target.set(0, 0, 0); // Always rotate around world center
 
 scene.add(new THREE.AmbientLight(0xffffff, 1.5));
 const sun = new THREE.DirectionalLight(0xffffff, 1);
-sun.position.set(5, 10, 7);
+sun.position.set(10, 10, 10);
 scene.add(sun);
 
 const draco = new DRACOLoader();
@@ -81,30 +85,73 @@ loader.setDRACOLoader(draco);
 let currentModel = null;
 
 function loadModel(filename) {
-  if (currentModel) scene.remove(currentModel);
+  if (currentModel) {
+    scene.remove(currentModel);
+    currentModel.traverse(n => { if(n.isMesh) { n.geometry.dispose(); if(n.material.dispose) n.material.dispose(); } });
+  }
+
   overlay.style.display = 'flex';
-  
+  overlay.style.opacity = '1';
+  bar.style.width = '0%';
+  status.innerText = "Downloading...";
+
   loader.load(filename, (gltf) => {
     currentModel = gltf.scene;
-    const box = new THREE.Box3().setFromObject(currentModel);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    currentModel.position.sub(center);
-    const scale = 7 / Math.max(size.x, size.y, size.z);
-    currentModel.scale.set(scale, scale, scale);
+
+    // --- FIX POSITION & SCALE ---
+    const bbox = new THREE.Box3().setFromObject(currentModel);
+    const center = bbox.getCenter(new THREE.Vector3());
+    const size = bbox.getSize(new THREE.Vector3());
+
+    // Move model so its internal center is at 0,0,0
+    currentModel.position.x = -center.x;
+    currentModel.position.y = -center.y;
+    currentModel.position.z = -center.z;
+
+    // Scale model to fit in a consistent view (approx 7 units wide)
+    const maxDim = Math.max(size.x, size.y, size.z);
+    const scaleFactor = 7 / (maxDim || 1);
+    currentModel.scale.set(scaleFactor, scaleFactor, scaleFactor);
+
     scene.add(currentModel);
-    overlay.style.display = 'none';
+    
+    // Reset camera and controls to look at the new centered model
+    controls.reset();
+    controls.target.set(0, 0, 0); 
+    camera.position.set(0, 2, 12);
     controls.autoRotate = true;
+
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.display = 'none'; }, 500);
+
   }, (xhr) => {
-    bar.style.width = (xhr.loaded / xhr.total * 100) + '%';
+    // Safety check for loading bar
+    if (xhr.lengthComputable) {
+      const p = (xhr.loaded / xhr.total) * 100;
+      bar.style.width = p + '%';
+      status.innerText = `Loading: ${Math.round(p)}%`;
+    } else {
+      status.innerText = "Streaming Data...";
+      bar.style.width = '50%'; // Placeholder if total size is unknown
+    }
+  }, (err) => {
+    status.innerText = "Error Loading File";
   });
 }
 
-select.addEventListener('change', (e) => loadModel(e.target.value));
+select.addEventListener('change', (e) => {
+  loadModel(e.target.value);
+  hint.style.opacity = '1'; // Show hint again on new load
+});
+
 document.getElementById('fs-btn').onclick = () => {
   if (!document.fullscreenElement) document.documentElement.requestFullscreen();
   else document.exitFullscreen();
 };
+
+const stopAuto = () => { controls.autoRotate = false; hint.style.opacity = '0'; };
+renderer.domElement.addEventListener('mousedown', stopAuto);
+renderer.domElement.addEventListener('wheel', stopAuto);
 
 window.addEventListener("resize", () => {
   camera.aspect = window.innerWidth / window.innerHeight;
