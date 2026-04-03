@@ -5,53 +5,64 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>3D Portfolio Viewer</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: sans-serif; }
-    
-    /* Dropdown UI */
-    #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
-    select { 
-      padding: 12px 25px; border-radius: 50px; border: 1px solid #ccc; 
-      background: white; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
-      font-size: 16px; outline: none;
+    :root {
+      --primary-blue: #007bff;
+      --hover-blue: #0056b3;
+      --light-blue: #e7f1ff;
     }
 
-    /* Keybind Hint (Bottom Right) */
-    #keybind-hint {
+    body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    
+    #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
+
+    /* Blue Dropdown */
+    select { 
+      padding: 12px 25px; border-radius: 50px; 
+      border: 2px solid var(--primary-blue); 
+      background: white; color: var(--primary-blue);
+      cursor: pointer; box-shadow: 0 4px 15px rgba(0,123,255,0.2); 
+      font-size: 16px; font-weight: 600; outline: none;
+      transition: all 0.2s;
+    }
+    select:hover { background: var(--light-blue); }
+
+    /* Reset Button & Keybind Hint */
+    #reset-btn {
       position: fixed;
       bottom: 20px;
       right: 20px;
-      background: rgba(255, 255, 255, 0.8);
-      padding: 10px 18px;
-      border-radius: 12px;
-      border: 1px solid #ddd;
-      font-size: 13px;
-      color: #555;
-      pointer-events: none;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      background: var(--primary-blue);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 50px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,123,255,0.3);
       z-index: 100;
+      transition: transform 0.1s, background 0.2s;
     }
+    #reset-btn:hover { background: var(--hover-blue); transform: scale(1.05); }
+    #reset-btn:active { transform: scale(0.95); }
+
     kbd {
-      background: #eee;
-      border: 1px solid #b4b4b4;
+      background: rgba(255,255,255,0.2);
+      border: 1px solid white;
       border-radius: 3px;
-      box-shadow: 0 1px 1px rgba(0,0,0,.2);
-      color: #333;
-      display: inline-block;
-      font-size: .85em;
-      font-weight: 700;
-      line-height: 1;
-      padding: 2px 4px;
-      white-space: nowrap;
+      padding: 1px 4px;
+      margin-left: 5px;
     }
 
-    /* Loading Overlay */
+    /* Loading Overlay in Blue */
     #loading-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: rgba(0,0,0,0.8); display: none; flex-direction: column; 
+      background: rgba(0, 31, 63, 0.9); display: none; flex-direction: column; 
       justify-content: center; align-items: center; z-index: 999; color: white; 
     }
-    .bar-container { width: 200px; height: 4px; background: #333; margin-top: 10px; border-radius: 10px; overflow: hidden; }
-    #progress-bar { width: 0%; height: 100%; background: #00ffcc; transition: width 0.2s; }
+    .bar-container { width: 200px; height: 6px; background: rgba(255,255,255,0.1); margin-top: 15px; border-radius: 10px; overflow: hidden; }
+    #progress-bar { width: 0%; height: 100%; background: #00d4ff; transition: width 0.2s; }
+    #status-text { letter-spacing: 1px; font-weight: 300; }
   </style>
 </head>
 <body>
@@ -65,10 +76,10 @@
     </select>
   </div>
 
-  <div id="keybind-hint">Press <kbd>R</kbd> to Reset View</div>
+  <button id="reset-btn">Reset View <kbd>R</kbd></button>
 
   <div id="loading-overlay">
-    <div id="status-text">Aligning Model...</div>
+    <div id="status-text">PREPARING MODEL...</div>
     <div class="bar-container"><div id="progress-bar"></div></div>
   </div>
 
@@ -81,7 +92,8 @@ import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/D
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeeeeee);
 
-const grid = new THREE.GridHelper(100, 100, 0x888888, 0xcccccc);
+// Grid (Light blue tint for the lines)
+const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xcccccc);
 scene.add(grid);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
@@ -110,6 +122,7 @@ let defaultCameraPos = new THREE.Vector3(30, 30, 30);
 let defaultTarget = new THREE.Vector3(0, 0, 0);
 
 function resetCamera() {
+    // Smoother reset logic
     camera.position.copy(defaultCameraPos);
     controls.target.copy(defaultTarget);
     controls.update();
@@ -123,7 +136,7 @@ function loadModel(filename) {
     const status = document.getElementById('status-text');
     
     overlay.style.display = 'flex';
-    status.innerText = "Loading " + filename;
+    status.innerText = "LOADING: " + filename.toUpperCase();
 
     loader.load(filename, (gltf) => {
         currentModel = gltf.scene;
@@ -139,7 +152,7 @@ function loadModel(filename) {
 
         scene.add(currentModel);
 
-        // Calculate and save the "Home" position for this specific model
+        // Calculate "Perfect" view for this specific house
         const maxDim = Math.max(size.x, size.y, size.z);
         const dist = maxDim * 1.5;
         
@@ -159,12 +172,12 @@ function loadModel(filename) {
     });
 }
 
-// KEYBOARD LISTENER
+// LISTENERS
 window.addEventListener('keydown', (event) => {
-    if (event.key.toLowerCase() === 'r') {
-        resetCamera();
-    }
+    if (event.key.toLowerCase() === 'r') resetCamera();
 });
+
+document.getElementById('reset-btn').onclick = resetCamera;
 
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
 
