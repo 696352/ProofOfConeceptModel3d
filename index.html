@@ -52,7 +52,6 @@
       align-items: center;
     }
     
-    /* Diamond Needle Wrapper */
     #needle-wrapper {
       position: absolute;
       width: 100%;
@@ -64,11 +63,11 @@
       transition: transform 0.05s linear;
     }
 
-    /* Diamond Shape CSS */
+    /* Diamond Shape */
     .needle-diamond {
-      width: 12px;
+      width: 14px;
       height: 35px;
-      clip-path: polygon(50% 0%, 100% 100%, 0% 100%); /* Triangle */
+      clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
     }
     .north-needle { 
       background: var(--north-red); 
@@ -76,7 +75,7 @@
     }
     .south-needle { 
       background: var(--south-white); 
-      transform: rotate(180deg); /* Flips triangle to point down */
+      transform: rotate(180deg); 
     }
 
     .dir { position: absolute; font-weight: 900; font-size: 14px; color: white; }
@@ -219,9 +218,9 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // Logic: Calculate camera rotation and add 180 degrees (PI) to point North Left
+    // FLIPPED LOGIC: Removed the + Math.PI offset to flip the compass 180 degrees
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
-    needleWrapper.style.transform = `rotate(${angle + Math.PI}rad)`;
+    needleWrapper.style.transform = `rotate(${angle}rad)`;
 
     renderer.render(scene, camera);
 }
