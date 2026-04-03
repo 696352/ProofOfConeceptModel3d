@@ -7,7 +7,7 @@
   <style>
     body { margin: 0; overflow: hidden; background-color: #eeeeee; font-family: sans-serif; }
     #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
-    select { padding: 12px 20px; border-radius: 50px; border: 1px solid #ccc; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+    select { padding: 12px 20px; border-radius: 50px; border: 1px solid #ccc; background: white; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.1); outline: none; }
     #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 999; color: white; }
     .bar-container { width: 200px; height: 4px; background: #333; margin-top: 10px; }
     #progress-bar { width: 0%; height: 100%; background: #00ffcc; transition: width 0.2s; }
@@ -49,15 +49,14 @@ const overlay = document.getElementById('loading-overlay');
 const bar = document.getElementById('progress-bar');
 const status = document.getElementById('status-text');
 
-// 1. SCENE SETUP
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeeeeee);
 
-// Add a Grid Helper so you can see where the center is
-const grid = new THREE.GridHelper(100, 100);
+// Grid sitting at Y = 0
+const grid = new THREE.GridHelper(100, 100, 0x888888, 0xcccccc);
 scene.add(grid);
 
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
 camera.position.set(20, 20, 20);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -68,77 +67,24 @@ document.body.appendChild(renderer.domElement);
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-// 2. LIGHTING (Increased for visibility)
 scene.add(new THREE.AmbientLight(0xffffff, 2.5));
-const light = new THREE.DirectionalLight(0xffffff, 2);
+const light = new THREE.DirectionalLight(0xffffff, 1.5);
 light.position.set(10, 50, 10);
 scene.add(light);
 
-// 3. LOADERS
 const draco = new DRACOLoader();
 draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
 const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let boxHelper = null;
 
 function loadModel(filename) {
     if (currentModel) scene.remove(currentModel);
-    if (boxHelper) scene.remove(boxHelper);
     
     overlay.style.display = 'flex';
     bar.style.width = '0%';
-    status.innerText = "Downloading...";
+    status.innerText = "Aligning House...";
 
     loader.load(filename, (gltf) => {
-        currentModel = gltf.scene;
-
-        // FORCE CENTER AND SCALE
-        const box = new THREE.Box3().setFromObject(currentModel);
-        const center = box.getCenter(new THREE.Vector3());
-        const size = box.getSize(new THREE.Vector3());
-
-        // Subtract center from position to force it to 0,0,0
-        currentModel.position.x = -center.x;
-        currentModel.position.y = -center.y;
-        currentModel.position.z = -center.z;
-
-        scene.add(currentModel);
-
-        // ADD DEBUG HELPER (A red box around the model)
-        boxHelper = new THREE.BoxHelper(currentModel, 0xff0000);
-        scene.add(boxHelper);
-
-        // ZOOM CAMERA TO FIT
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const distance = maxDim * 2;
-        camera.position.set(distance, distance, distance);
-        controls.target.set(0, 0, 0);
-        controls.update();
-
-        overlay.style.display = 'none';
-        console.log("Model Loaded. Size:", size, "Center:", center);
-    }, 
-    (xhr) => { bar.style.width = (xhr.loaded / xhr.total * 100) + '%'; },
-    (err) => { status.innerText = "Error Loading File"; }
-    );
-}
-
-select.onchange = (e) => loadModel(e.target.value);
-
-window.onresize = () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-};
-
-function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-}
-animate();
-</script>
-</body>
-</html>
+        currentModel = gl
