@@ -33,8 +33,8 @@
     /* 2D Compass Rose (Bottom Left) */
     #compass-hud {
       position: fixed;
-      bottom: 30px;
-      left: 30px;
+      bottom: 40px;
+      left: 40px;
       width: 80px;
       height: 80px;
       z-index: 100;
@@ -43,15 +43,16 @@
     #compass-ring {
       width: 100%;
       height: 100%;
-      border: 2px solid rgba(255,255,255,0.3);
+      border: 2px solid rgba(255,255,255,0.2);
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.2);
+      background: rgba(0, 0, 0, 0.3);
       position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
     }
-    /* The Two-Tone Needle */
+    
+    /* Diamond Needle Wrapper */
     #needle-wrapper {
       position: absolute;
       width: 100%;
@@ -60,19 +61,27 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
+      transition: transform 0.05s linear;
     }
-    .needle-part {
-      width: 6px;
-      height: 30px;
-      border-radius: 2px;
-    }
-    .north-needle { background: var(--north-red); box-shadow: 0 0 10px var(--north-red); }
-    .south-needle { background: var(--south-white); }
 
-    /* Direction Labels */
-    .dir { position: absolute; font-weight: 900; font-size: 12px; color: white; opacity: 0.8; }
-    .n { top: -20px; color: var(--north-red); opacity: 1; }
-    .s { bottom: -20px; }
+    /* Diamond Shape CSS */
+    .needle-diamond {
+      width: 12px;
+      height: 35px;
+      clip-path: polygon(50% 0%, 100% 100%, 0% 100%); /* Triangle */
+    }
+    .north-needle { 
+      background: var(--north-red); 
+      box-shadow: 0 0 15px var(--north-red);
+    }
+    .south-needle { 
+      background: var(--south-white); 
+      transform: rotate(180deg); /* Flips triangle to point down */
+    }
+
+    .dir { position: absolute; font-weight: 900; font-size: 14px; color: white; }
+    .n { top: -25px; color: var(--north-red); }
+    .s { bottom: -25px; }
 
     #reset-btn {
       position: fixed; bottom: 20px; right: 20px;
@@ -111,8 +120,8 @@
     <div id="compass-ring">
       <div id="needle-wrapper">
         <div class="dir n">N</div>
-        <div class="needle-part north-needle"></div>
-        <div class="needle-part south-needle"></div>
+        <div class="needle-diamond north-needle"></div>
+        <div class="needle-diamond south-needle"></div>
         <div class="dir s">S</div>
       </div>
     </div>
@@ -157,13 +166,13 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let defaultCameraPos = new THREE.Vector3(60, 40, 0); // Side-on view for North=Left
+let defaultCameraPos = new THREE.Vector3(60, 40, 0); 
 let defaultTarget = new THREE.Vector3(0, 0, 0);
 
 const needleWrapper = document.getElementById('needle-wrapper');
 
 function resetCamera() {
-    controls.reset(); // Stop stutter/momentum
+    controls.reset(); 
     camera.position.copy(defaultCameraPos);
     controls.target.copy(defaultTarget);
     controls.update();
@@ -184,7 +193,6 @@ function loadModel(filename) {
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
-        // Resetting to look at the "side" so North is Left (-X)
         defaultCameraPos.set(maxDim * 2.5, size.y * 0.8, 0); 
         defaultTarget.set(0, size.y / 3, 0);
         
@@ -211,10 +219,9 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // Compass Logic: Rotate needle based on camera position around center
-    // We offset the angle so N points Left when the camera is at the Reset position
+    // Logic: Calculate camera rotation and add 180 degrees (PI) to point North Left
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
-    needleWrapper.style.transform = `rotate(${angle + Math.PI/2}rad)`;
+    needleWrapper.style.transform = `rotate(${angle + Math.PI}rad)`;
 
     renderer.render(scene, camera);
 }
