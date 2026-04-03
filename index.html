@@ -29,19 +29,45 @@
       font-size: 14px; font-weight: 600; outline: none;
     }
 
-    /* Toggle Switch */
-    .switch { position: relative; display: inline-block; width: 34px; height: 18px; margin-left: 8px; }
-    .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
-      background-color: #ccc; transition: .4s; border-radius: 20px;
+    /* 2D Compass Rose (Bottom Left) */
+    #compass-hud {
+      position: fixed;
+      bottom: 30px;
+      left: 30px;
+      width: 100px;
+      height: 100px;
+      z-index: 100;
+      pointer-events: none;
     }
-    .slider:before {
-      position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px;
-      background-color: white; transition: .4s; border-radius: 50%;
+    #compass-ring {
+      width: 100%;
+      height: 100%;
+      border: 2px solid var(--primary-blue);
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.1);
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.1s linear;
     }
-    input:checked + .slider { background-color: var(--primary-blue); }
-    input:checked + .slider:before { transform: translateX(16px); }
+    .dir {
+      position: absolute;
+      color: var(--primary-blue);
+      font-weight: 900;
+      font-size: 14px;
+      text-shadow: 0 0 5px white;
+    }
+    .n { top: 5px; }
+    .s { bottom: 5px; }
+    .e { right: 5px; }
+    .w { left: 5px; }
+    #compass-needle {
+      width: 4px;
+      height: 40px;
+      background: var(--primary-blue);
+      border-radius: 2px;
+    }
 
     #reset-btn {
       position: fixed; bottom: 20px; right: 20px;
@@ -72,7 +98,17 @@
 
     <div class="toggle-container">
       Grid
-      <label class="switch"><input type="checkbox" id="grid-toggle"><span class="slider"></span></label>
+      <input type="checkbox" id="grid-toggle" style="margin-left: 10px;">
+    </div>
+  </div>
+
+  <div id="compass-hud">
+    <div id="compass-ring">
+      <div class="dir n">N</div>
+      <div class="dir s">S</div>
+      <div class="dir e">E</div>
+      <div class="dir w">W</div>
+      <div id="compass-needle"></div>
     </div>
   </div>
 
@@ -100,55 +136,33 @@ const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 
-// Light Setup
-scene.add(new THREE.AmbientLight(0xffffff, 2));
+scene.add(new THREE.AmbientLight(0xffffff, 2.5));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(10, 50, 10);
 scene.add(sun);
 
-// Grid Helper
 const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xffffff);
 grid.visible = false;
 scene.add(grid);
 
-// COMPASS INDICATOR
-const compassGroup = new THREE.Group();
-const createLabel = (text, pos) => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 128; canvas.height = 128;
-    ctx.fillStyle = '#007bff'; ctx.font = 'bold 80px Arial';
-    ctx.textAlign = 'center'; ctx.fillText(text, 64, 90);
-    const texture = new THREE.CanvasTexture(canvas);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
-    sprite.scale.set(4, 4, 1);
-    sprite.position.copy(pos);
-    return sprite;
-};
-
-// Based on your request: North is Left (-X), South is Right (+X)
-const nLabel = createLabel('N', new THREE.Vector3(-15, 0, 0));
-const sLabel = createLabel('S', new THREE.Vector3(15, 0, 0));
-compassGroup.add(nLabel, sLabel);
-scene.add(compassGroup);
-
-// Loaders
 const draco = new DRACOLoader();
 draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
 const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let defaultCameraPos = new THREE.Vector3(0, 40, 60);
+let defaultCameraPos = new THREE.Vector3(0, 40, 80);
 let defaultTarget = new THREE.Vector3(0, 0, 0);
 
+// Compass UI Reference
+const compassRing = document.getElementById('compass-ring');
+
 function resetCamera() {
-    controls.enabled = false; // Disable to break momentum
+    controls.enabled = false;
     camera.position.copy(defaultCameraPos);
     controls.target.copy(defaultTarget);
     controls.update();
     controls.enabled = true;
-    renderer.render(scene, camera);
 }
 
 function loadModel(filename) {
@@ -164,12 +178,9 @@ function loadModel(filename) {
         currentModel.position.set(-center.x, -box.min.y, -center.z);
         scene.add(currentModel);
 
-        // Adjust Compass height to be just above floor level
-        compassGroup.position.y = 0.1;
-
         const maxDim = Math.max(size.x, size.z);
-        // Set camera to look "straight on" (Z-axis view)
-        defaultCameraPos.set(0, size.y * 0.8, maxDim * 2);
+        // Default "Straight on" view (Looking South to North)
+        defaultCameraPos.set(0, size.y * 0.8, maxDim * 2.5);
         defaultTarget.set(0, size.y / 3, 0);
         
         resetCamera();
@@ -180,6 +191,7 @@ function loadModel(filename) {
     });
 }
 
+// UI Handlers
 document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
 document.getElementById('reset-btn').onclick = resetCamera;
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
@@ -194,6 +206,12 @@ window.onresize = () => {
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+
+    // Update Compass Rotation based on camera angle
+    // Using atan2 to find the angle on the XZ plane
+    const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+    compassRing.style.transform = `rotate(${angle}rad)`;
+
     renderer.render(scene, camera);
 }
 animate();
