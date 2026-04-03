@@ -38,21 +38,19 @@
   </div>
 
 <script type="module">
-// Using Direct URLs to ensure the grid always shows up
-import * as THREE from "https://unpkg.com/three@0.160.0/build/three.module.js";
-import { OrbitControls } from "https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js";
-import { GLTFLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "https://unpkg.com/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
+// DIRECT LINKS - No ImportMap required
+import * as THREE from "https://cdn.skypack.dev/three@0.160.0/build/three.module.js";
+import { OrbitControls } from "https://cdn.skypack.dev/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "https://cdn.skypack.dev/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "https://cdn.skypack.dev/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
+// --- ENGINE START ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeeeeee);
-
-// Grid - If you see this, the code is running correctly
-const grid = new THREE.GridHelper(100, 100);
-scene.add(grid);
+scene.add(new THREE.GridHelper(100, 100)); // The "Heartbeat" grid
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
-camera.position.set(20, 20, 20);
+camera.position.set(30, 30, 30);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
@@ -76,27 +74,20 @@ let currentModel = null;
 
 function loadModel(filename) {
     if (currentModel) scene.remove(currentModel);
-    
     const overlay = document.getElementById('loading-overlay');
-    const bar = document.getElementById('progress-bar');
-    
     overlay.style.display = 'flex';
-    bar.style.width = '0%';
 
     loader.load(filename, (gltf) => {
         currentModel = gltf.scene;
 
-        // Simple Centering (Back to basics)
+        // Standard Centering
         const box = new THREE.Box3().setFromObject(currentModel);
         const center = box.getCenter(new THREE.Vector3());
-        
-        currentModel.position.x = -center.x;
-        currentModel.position.y = -center.y;
-        currentModel.position.z = -center.z;
+        currentModel.position.set(-center.x, -center.y, -center.z);
 
         scene.add(currentModel);
 
-        // Reset camera view
+        // Zoom to fit
         const size = box.getSize(new THREE.Vector3());
         const maxDim = Math.max(size.x, size.y, size.z);
         camera.position.set(maxDim * 1.5, maxDim * 1.5, maxDim * 1.5);
@@ -106,11 +97,12 @@ function loadModel(filename) {
         overlay.style.display = 'none';
     }, 
     (xhr) => {
-        if (xhr.total > 0) bar.style.width = (xhr.loaded / xhr.total * 100) + '%';
+        const p = (xhr.loaded / xhr.total * 100);
+        document.getElementById('progress-bar').style.width = p + '%';
     }, 
     (err) => {
         console.error(err);
-        document.getElementById('status-text').innerText = "Error: File not found";
+        document.getElementById('status-text').innerText = "File not found!";
     });
 }
 
