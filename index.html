@@ -8,66 +8,74 @@
     :root {
       --primary-blue: #007bff;
       --hover-blue: #0056b3;
-      --light-blue: #e7f1ff;
+      --dark-navy: #001f3f;
+      --sky-blue: #a1c4fd;
     }
 
-    /* Gradient Background */
+    /* Stronger Dark Blue to Light Blue Gradient */
     body { 
       margin: 0; 
       overflow: hidden; 
-      background: linear-gradient(180deg, #ffffff 0%, #d1e5ff 100%);
+      background: linear-gradient(180deg, var(--dark-navy) 0%, var(--sky-blue) 100%);
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
     }
     
-    #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; }
+    #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; align-items: center; }
 
     /* Blue Dropdown */
     select { 
       padding: 12px 25px; border-radius: 50px; 
       border: 2px solid var(--primary-blue); 
       background: white; color: var(--primary-blue);
-      cursor: pointer; box-shadow: 0 4px 15px rgba(0,123,255,0.2); 
+      cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
       font-size: 16px; font-weight: 600; outline: none;
-      transition: all 0.2s;
     }
-    select:hover { background: var(--light-blue); }
+
+    /* Toggle Switch for Grid */
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      background: white;
+      padding: 8px 15px;
+      border-radius: 50px;
+      border: 2px solid var(--primary-blue);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      color: var(--primary-blue);
+      font-weight: 600;
+      font-size: 14px;
+      gap: 10px;
+    }
+    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #ccc; transition: .4s; border-radius: 20px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+      background-color: white; transition: .4s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--primary-blue); }
+    input:checked + .slider:before { transform: translateX(20px); }
 
     /* Reset Button */
     #reset-btn {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: var(--primary-blue);
-      color: white;
-      padding: 12px 20px;
-      border-radius: 50px;
-      border: none;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0,123,255,0.3);
-      z-index: 100;
-      transition: transform 0.1s, background 0.2s;
+      position: fixed; bottom: 20px; right: 20px;
+      background: var(--primary-blue); color: white;
+      padding: 12px 20px; border-radius: 50px; border: none;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 100;
     }
-    #reset-btn:hover { background: var(--hover-blue); transform: scale(1.05); }
-    #reset-btn:active { transform: scale(0.95); }
-
-    kbd {
-      background: rgba(255,255,255,0.2);
-      border: 1px solid white;
-      border-radius: 3px;
-      padding: 1px 4px;
-      margin-left: 5px;
-    }
+    #reset-btn:hover { background: var(--hover-blue); }
 
     /* Loading Overlay */
     #loading-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: rgba(0, 31, 63, 0.9); display: none; flex-direction: column; 
+      background: rgba(0, 8, 20, 0.95); display: none; flex-direction: column; 
       justify-content: center; align-items: center; z-index: 999; color: white; 
     }
     .bar-container { width: 200px; height: 6px; background: rgba(255,255,255,0.1); margin-top: 15px; border-radius: 10px; overflow: hidden; }
-    #progress-bar { width: 0%; height: 100%; background: #00d4ff; transition: width 0.2s; }
+    #progress-bar { width: 0%; height: 100%; background: #00d4ff; }
   </style>
 </head>
 <body>
@@ -79,12 +87,20 @@
       <option value="Week9-v1.glb">Week 9</option>
       <option value="Week3.glb">Week 3</option>
     </select>
+
+    <div class="toggle-container">
+      Grid
+      <label class="switch">
+        <input type="checkbox" id="grid-toggle">
+        <span class="slider"></span>
+      </label>
+    </div>
   </div>
 
-  <button id="reset-btn">Reset View <kbd>R</kbd></button>
+  <button id="reset-btn">Reset View (R)</button>
 
   <div id="loading-overlay">
-    <div id="status-text">PREPARING MODEL...</div>
+    <div id="status-text">INITIALIZING...</div>
     <div class="bar-container"><div id="progress-bar"></div></div>
   </div>
 
@@ -95,26 +111,24 @@ import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GL
 import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
 const scene = new THREE.Scene();
-// Scene background is set to null so the CSS gradient shows through
 scene.background = null; 
 
-const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xcccccc);
+// Grid - Set to invisible by default
+const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xffffff);
+grid.visible = false; 
 scene.add(grid);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
-camera.position.set(30, 30, 30);
+camera.position.set(50, 50, 50);
 
-const renderer = new THREE.WebGLRenderer({ 
-    antialias: true, 
-    alpha: true // Alpha true allows the CSS gradient to be visible
-});
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.05;
+controls.dampingFactor = 0.08;
 
 scene.add(new THREE.AmbientLight(0xffffff, 2));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -127,66 +141,52 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let defaultCameraPos = new THREE.Vector3(30, 30, 30);
+let defaultCameraPos = new THREE.Vector3(50, 50, 50);
 let defaultTarget = new THREE.Vector3(0, 0, 0);
 
 function resetCamera() {
-    // 1. Kill momentum/acceleration
-    controls.enableDamping = false; 
-    
-    // 2. Set hard positions
+    // Stop all movement immediately
+    controls.reset(); 
     camera.position.copy(defaultCameraPos);
     controls.target.copy(defaultTarget);
     
-    // 3. Force update then turn damping back on for future movements
-    controls.update(); 
-    controls.enableDamping = true; 
+    // Explicitly update and render to prevent stutter
+    controls.update();
+    renderer.render(scene, camera); 
 }
 
 function loadModel(filename) {
     if (currentModel) scene.remove(currentModel);
-    
-    const overlay = document.getElementById('loading-overlay');
-    const bar = document.getElementById('progress-bar');
-    const status = document.getElementById('status-text');
-    
-    overlay.style.display = 'flex';
-    status.innerText = "LOADING: " + filename.toUpperCase();
+    document.getElementById('loading-overlay').style.display = 'flex';
 
     loader.load(filename, (gltf) => {
         currentModel = gltf.scene;
-
         const box = new THREE.Box3().setFromObject(currentModel);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        currentModel.position.x = -center.x;
-        currentModel.position.y = -box.min.y; 
-        currentModel.position.z = -center.z;
-
+        currentModel.position.set(-center.x, -box.min.y, -center.z);
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.y, size.z);
-        const dist = maxDim * 1.5;
-        
-        defaultCameraPos.set(dist, dist / 1.5, dist);
+        defaultCameraPos.set(maxDim * 1.5, maxDim * 0.8, maxDim * 1.5);
         defaultTarget.set(0, size.y / 4, 0);
         
         resetCamera();
-
-        overlay.style.display = 'none';
+        document.getElementById('loading-overlay').style.display = 'none';
     }, 
     (xhr) => {
-        if (xhr.total > 0) bar.style.width = (xhr.loaded / xhr.total * 100) + '%';
-    }, 
-    (err) => {
-        console.error(err);
-        status.innerText = "FILE ERROR";
+        if (xhr.total > 0) document.getElementById('progress-bar').style.width = (xhr.loaded / xhr.total * 100) + '%';
     });
 }
 
-window.addEventListener('keydown', (event) => {
-    if (event.key.toLowerCase() === 'r') resetCamera();
+// UI LISTENERS
+document.getElementById('grid-toggle').addEventListener('change', (e) => {
+    grid.visible = e.target.checked;
+});
+
+window.addEventListener('keydown', (e) => {
+    if (e.key.toLowerCase() === 'r') resetCamera();
 });
 
 document.getElementById('reset-btn').onclick = resetCamera;
