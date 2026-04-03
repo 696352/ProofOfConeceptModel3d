@@ -7,9 +7,10 @@
   <style>
     :root {
       --primary-blue: #007bff;
-      --hover-blue: #0056b3;
       --dark-navy: #000c1d;
       --sky-blue: #7baef7;
+      --north-red: #ff3b3b;
+      --south-white: #ffffff;
     }
 
     body { 
@@ -34,40 +35,44 @@
       position: fixed;
       bottom: 30px;
       left: 30px;
-      width: 100px;
-      height: 100px;
+      width: 80px;
+      height: 80px;
       z-index: 100;
       pointer-events: none;
     }
     #compass-ring {
       width: 100%;
       height: 100%;
-      border: 2px solid var(--primary-blue);
+      border: 2px solid rgba(255,255,255,0.3);
       border-radius: 50%;
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.2);
       position: relative;
       display: flex;
       justify-content: center;
       align-items: center;
-      transition: transform 0.1s linear;
     }
-    .dir {
+    /* The Two-Tone Needle */
+    #needle-wrapper {
       position: absolute;
-      color: var(--primary-blue);
-      font-weight: 900;
-      font-size: 14px;
-      text-shadow: 0 0 5px white;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
-    .n { top: 5px; }
-    .s { bottom: 5px; }
-    .e { right: 5px; }
-    .w { left: 5px; }
-    #compass-needle {
-      width: 4px;
-      height: 40px;
-      background: var(--primary-blue);
+    .needle-part {
+      width: 6px;
+      height: 30px;
       border-radius: 2px;
     }
+    .north-needle { background: var(--north-red); box-shadow: 0 0 10px var(--north-red); }
+    .south-needle { background: var(--south-white); }
+
+    /* Direction Labels */
+    .dir { position: absolute; font-weight: 900; font-size: 12px; color: white; opacity: 0.8; }
+    .n { top: -20px; color: var(--north-red); opacity: 1; }
+    .s { bottom: -20px; }
 
     #reset-btn {
       position: fixed; bottom: 20px; right: 20px;
@@ -104,11 +109,12 @@
 
   <div id="compass-hud">
     <div id="compass-ring">
-      <div class="dir n">N</div>
-      <div class="dir s">S</div>
-      <div class="dir e">E</div>
-      <div class="dir w">W</div>
-      <div id="compass-needle"></div>
+      <div id="needle-wrapper">
+        <div class="dir n">N</div>
+        <div class="needle-part north-needle"></div>
+        <div class="needle-part south-needle"></div>
+        <div class="dir s">S</div>
+      </div>
     </div>
   </div>
 
@@ -151,18 +157,17 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let defaultCameraPos = new THREE.Vector3(0, 40, 80);
+let defaultCameraPos = new THREE.Vector3(60, 40, 0); // Side-on view for North=Left
 let defaultTarget = new THREE.Vector3(0, 0, 0);
 
-// Compass UI Reference
-const compassRing = document.getElementById('compass-ring');
+const needleWrapper = document.getElementById('needle-wrapper');
 
 function resetCamera() {
-    controls.enabled = false;
+    controls.reset(); // Stop stutter/momentum
     camera.position.copy(defaultCameraPos);
     controls.target.copy(defaultTarget);
     controls.update();
-    controls.enabled = true;
+    renderer.render(scene, camera);
 }
 
 function loadModel(filename) {
@@ -179,8 +184,8 @@ function loadModel(filename) {
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
-        // Default "Straight on" view (Looking South to North)
-        defaultCameraPos.set(0, size.y * 0.8, maxDim * 2.5);
+        // Resetting to look at the "side" so North is Left (-X)
+        defaultCameraPos.set(maxDim * 2.5, size.y * 0.8, 0); 
         defaultTarget.set(0, size.y / 3, 0);
         
         resetCamera();
@@ -191,7 +196,6 @@ function loadModel(filename) {
     });
 }
 
-// UI Handlers
 document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
 document.getElementById('reset-btn').onclick = resetCamera;
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
@@ -207,10 +211,10 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // Update Compass Rotation based on camera angle
-    // Using atan2 to find the angle on the XZ plane
+    // Compass Logic: Rotate needle based on camera position around center
+    // We offset the angle so N points Left when the camera is at the Reset position
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
-    compassRing.style.transform = `rotate(${angle}rad)`;
+    needleWrapper.style.transform = `rotate(${angle + Math.PI/2}rad)`;
 
     renderer.render(scene, camera);
 }
