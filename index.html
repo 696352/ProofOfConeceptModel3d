@@ -38,17 +38,15 @@
   </div>
 
 <script type="module">
-// Switching to esm.sh for better DRACO support
 import * as THREE from "https://esm.sh/three@0.160.0";
 import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
 import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
-// --- ENGINE START ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeeeeee);
 
-// Grid - Heartbeat check
+// Grid - Sitting at Y = 0
 const grid = new THREE.GridHelper(100, 100, 0x888888, 0xcccccc);
 scene.add(grid);
 
@@ -68,9 +66,7 @@ const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(10, 50, 10);
 scene.add(sun);
 
-// --- LOADER SETUP ---
 const draco = new DRACOLoader();
-// Pointing to a reliable decoder path
 draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
 const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
@@ -85,43 +81,43 @@ function loadModel(filename) {
     const status = document.getElementById('status-text');
     
     overlay.style.display = 'flex';
-    status.innerText = "Downloading " + filename;
+    status.innerText = "Aligning " + filename;
 
     loader.load(filename, (gltf) => {
         currentModel = gltf.scene;
 
-        // Centering math
+        // --- THE FIX: Align Bottom to Grid ---
         const box = new THREE.Box3().setFromObject(currentModel);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
+        // Center X and Z, but lift Y so the very bottom (box.min.y) is at 0
         currentModel.position.x = -center.x;
-        currentModel.position.y = -center.y;
+        currentModel.position.y = -box.min.y; 
         currentModel.position.z = -center.z;
 
         scene.add(currentModel);
 
-        // Auto-Zoom to fit model
+        // Zoom to fit model
         const maxDim = Math.max(size.x, size.y, size.z);
         const dist = maxDim * 1.5;
-        camera.position.set(dist, dist, dist);
-        controls.target.set(0, 0, 0);
+        camera.position.set(dist, dist / 1.5, dist);
+        
+        // Point camera at the center of the house, not the floor
+        controls.target.set(0, size.y / 4, 0); 
         controls.update();
 
         overlay.style.display = 'none';
     }, 
     (xhr) => {
-        if (xhr.total > 0) {
-            bar.style.width = (xhr.loaded / xhr.total * 100) + '%';
-        }
+        if (xhr.total > 0) bar.style.width = (xhr.loaded / xhr.total * 100) + '%';
     }, 
     (err) => {
         console.error(err);
-        status.innerText = "FILE ERROR: " + filename;
+        status.innerText = "FILE ERROR";
     });
 }
 
-// --- INTERACTION ---
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
 
 window.onresize = () => {
