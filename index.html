@@ -8,74 +8,56 @@
     :root {
       --primary-blue: #007bff;
       --hover-blue: #0056b3;
-      --dark-navy: #001f3f;
-      --sky-blue: #a1c4fd;
+      --dark-navy: #000c1d;
+      --sky-blue: #7baef7;
     }
 
-    /* Stronger Dark Blue to Light Blue Gradient */
     body { 
       margin: 0; 
       overflow: hidden; 
       background: linear-gradient(180deg, var(--dark-navy) 0%, var(--sky-blue) 100%);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      font-family: 'Segoe UI', sans-serif; 
     }
     
     #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; align-items: center; }
 
-    /* Blue Dropdown */
-    select { 
-      padding: 12px 25px; border-radius: 50px; 
+    select, .toggle-container { 
+      padding: 10px 20px; border-radius: 50px; 
       border: 2px solid var(--primary-blue); 
       background: white; color: var(--primary-blue);
-      cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
-      font-size: 16px; font-weight: 600; outline: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+      font-size: 14px; font-weight: 600; outline: none;
     }
 
-    /* Toggle Switch for Grid */
-    .toggle-container {
-      display: flex;
-      align-items: center;
-      background: white;
-      padding: 8px 15px;
-      border-radius: 50px;
-      border: 2px solid var(--primary-blue);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      color: var(--primary-blue);
-      font-weight: 600;
-      font-size: 14px;
-      gap: 10px;
-    }
-    .switch { position: relative; display: inline-block; width: 40px; height: 20px; }
+    /* Toggle Switch */
+    .switch { position: relative; display: inline-block; width: 34px; height: 18px; margin-left: 8px; }
     .switch input { opacity: 0; width: 0; height: 0; }
     .slider {
       position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
       background-color: #ccc; transition: .4s; border-radius: 20px;
     }
     .slider:before {
-      position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px;
+      position: absolute; content: ""; height: 12px; width: 12px; left: 3px; bottom: 3px;
       background-color: white; transition: .4s; border-radius: 50%;
     }
     input:checked + .slider { background-color: var(--primary-blue); }
-    input:checked + .slider:before { transform: translateX(20px); }
+    input:checked + .slider:before { transform: translateX(16px); }
 
-    /* Reset Button */
     #reset-btn {
       position: fixed; bottom: 20px; right: 20px;
       background: var(--primary-blue); color: white;
-      padding: 12px 20px; border-radius: 50px; border: none;
-      font-size: 14px; font-weight: 600; cursor: pointer;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4); z-index: 100;
+      padding: 12px 25px; border-radius: 50px; border: none;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 100;
     }
-    #reset-btn:hover { background: var(--hover-blue); }
 
-    /* Loading Overlay */
     #loading-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: rgba(0, 8, 20, 0.95); display: none; flex-direction: column; 
+      background: var(--dark-navy); display: none; flex-direction: column; 
       justify-content: center; align-items: center; z-index: 999; color: white; 
     }
-    .bar-container { width: 200px; height: 6px; background: rgba(255,255,255,0.1); margin-top: 15px; border-radius: 10px; overflow: hidden; }
-    #progress-bar { width: 0%; height: 100%; background: #00d4ff; }
+    .bar-container { width: 200px; height: 4px; background: rgba(255,255,255,0.1); margin-top: 15px; border-radius: 10px; }
+    #progress-bar { width: 0%; height: 100%; background: var(--primary-blue); }
   </style>
 </head>
 <body>
@@ -90,17 +72,14 @@
 
     <div class="toggle-container">
       Grid
-      <label class="switch">
-        <input type="checkbox" id="grid-toggle">
-        <span class="slider"></span>
-      </label>
+      <label class="switch"><input type="checkbox" id="grid-toggle"><span class="slider"></span></label>
     </div>
   </div>
 
-  <button id="reset-btn">Reset View (R)</button>
+  <button id="reset-btn">RESET VIEW (R)</button>
 
   <div id="loading-overlay">
-    <div id="status-text">INITIALIZING...</div>
+    <div id="status-text">LOADING...</div>
     <div class="bar-container"><div id="progress-bar"></div></div>
   </div>
 
@@ -111,48 +90,65 @@ import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GL
 import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
 const scene = new THREE.Scene();
-scene.background = null; 
-
-// Grid - Set to invisible by default
-const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xffffff);
-grid.visible = false; 
-scene.add(grid);
-
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
-camera.position.set(50, 50, 50);
-
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.08;
+controls.dampingFactor = 0.1;
 
+// Light Setup
 scene.add(new THREE.AmbientLight(0xffffff, 2));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(10, 50, 10);
 scene.add(sun);
 
+// Grid Helper
+const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xffffff);
+grid.visible = false;
+scene.add(grid);
+
+// COMPASS INDICATOR
+const compassGroup = new THREE.Group();
+const createLabel = (text, pos) => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 128; canvas.height = 128;
+    ctx.fillStyle = '#007bff'; ctx.font = 'bold 80px Arial';
+    ctx.textAlign = 'center'; ctx.fillText(text, 64, 90);
+    const texture = new THREE.CanvasTexture(canvas);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture }));
+    sprite.scale.set(4, 4, 1);
+    sprite.position.copy(pos);
+    return sprite;
+};
+
+// Based on your request: North is Left (-X), South is Right (+X)
+const nLabel = createLabel('N', new THREE.Vector3(-15, 0, 0));
+const sLabel = createLabel('S', new THREE.Vector3(15, 0, 0));
+compassGroup.add(nLabel, sLabel);
+scene.add(compassGroup);
+
+// Loaders
 const draco = new DRACOLoader();
 draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
 const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let defaultCameraPos = new THREE.Vector3(50, 50, 50);
+let defaultCameraPos = new THREE.Vector3(0, 40, 60);
 let defaultTarget = new THREE.Vector3(0, 0, 0);
 
 function resetCamera() {
-    // Stop all movement immediately
-    controls.reset(); 
+    controls.enabled = false; // Disable to break momentum
     camera.position.copy(defaultCameraPos);
     controls.target.copy(defaultTarget);
-    
-    // Explicitly update and render to prevent stutter
     controls.update();
-    renderer.render(scene, camera); 
+    controls.enabled = true;
+    renderer.render(scene, camera);
 }
 
 function loadModel(filename) {
@@ -168,9 +164,13 @@ function loadModel(filename) {
         currentModel.position.set(-center.x, -box.min.y, -center.z);
         scene.add(currentModel);
 
-        const maxDim = Math.max(size.x, size.y, size.z);
-        defaultCameraPos.set(maxDim * 1.5, maxDim * 0.8, maxDim * 1.5);
-        defaultTarget.set(0, size.y / 4, 0);
+        // Adjust Compass height to be just above floor level
+        compassGroup.position.y = 0.1;
+
+        const maxDim = Math.max(size.x, size.z);
+        // Set camera to look "straight on" (Z-axis view)
+        defaultCameraPos.set(0, size.y * 0.8, maxDim * 2);
+        defaultTarget.set(0, size.y / 3, 0);
         
         resetCamera();
         document.getElementById('loading-overlay').style.display = 'none';
@@ -180,17 +180,10 @@ function loadModel(filename) {
     });
 }
 
-// UI LISTENERS
-document.getElementById('grid-toggle').addEventListener('change', (e) => {
-    grid.visible = e.target.checked;
-});
-
-window.addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'r') resetCamera();
-});
-
+document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
 document.getElementById('reset-btn').onclick = resetCamera;
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
+window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'r') resetCamera(); });
 
 window.onresize = () => {
     camera.aspect = window.innerWidth / window.innerHeight;
