@@ -38,88 +38,37 @@
   </div>
 
 <script type="module">
-// DIRECT LINKS - No ImportMap required
-import * as THREE from "https://cdn.skypack.dev/three@0.160.0/build/three.module.js";
-import { OrbitControls } from "https://cdn.skypack.dev/three@0.160.0/examples/jsm/controls/OrbitControls.js";
-import { GLTFLoader } from "https://cdn.skypack.dev/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "https://cdn.skypack.dev/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
+// Switching to esm.sh for better DRACO support
+import * as THREE from "https://esm.sh/three@0.160.0";
+import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
+import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
+import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
 // --- ENGINE START ---
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeeeeee);
-scene.add(new THREE.GridHelper(100, 100)); // The "Heartbeat" grid
+
+// Grid - Heartbeat check
+const grid = new THREE.GridHelper(100, 100, 0x888888, 0xcccccc);
+scene.add(grid);
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
 camera.position.set(30, 30, 30);
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
 scene.add(new THREE.AmbientLight(0xffffff, 2));
-const sun = new THREE.DirectionalLight(0xffffff, 1);
-sun.position.set(10, 20, 10);
+const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+sun.position.set(10, 50, 10);
 scene.add(sun);
 
+// --- LOADER SETUP ---
 const draco = new DRACOLoader();
-draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
-const loader = new GLTFLoader();
-loader.setDRACOLoader(draco);
-
-let currentModel = null;
-
-function loadModel(filename) {
-    if (currentModel) scene.remove(currentModel);
-    const overlay = document.getElementById('loading-overlay');
-    overlay.style.display = 'flex';
-
-    loader.load(filename, (gltf) => {
-        currentModel = gltf.scene;
-
-        // Standard Centering
-        const box = new THREE.Box3().setFromObject(currentModel);
-        const center = box.getCenter(new THREE.Vector3());
-        currentModel.position.set(-center.x, -center.y, -center.z);
-
-        scene.add(currentModel);
-
-        // Zoom to fit
-        const size = box.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-        camera.position.set(maxDim * 1.5, maxDim * 1.5, maxDim * 1.5);
-        controls.target.set(0, 0, 0);
-        controls.update();
-
-        overlay.style.display = 'none';
-    }, 
-    (xhr) => {
-        const p = (xhr.loaded / xhr.total * 100);
-        document.getElementById('progress-bar').style.width = p + '%';
-    }, 
-    (err) => {
-        console.error(err);
-        document.getElementById('status-text').innerText = "File not found!";
-    });
-}
-
-document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
-
-window.onresize = () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-};
-
-function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-    renderer.render(scene, camera);
-}
-animate();
-</script>
-</body>
-</html>
+// Pointing to a reliable decoder path
+draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.
