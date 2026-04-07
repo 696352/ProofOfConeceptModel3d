@@ -23,15 +23,16 @@
     /* Welcome / No Selection State */
     #welcome-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 12, 29, 0.8);
-      backdrop-filter: blur(10px);
+      background: rgba(0, 12, 29, 0.85);
+      backdrop-filter: blur(15px);
       display: flex; flex-direction: column; justify-content: center; align-items: center;
       z-index: 200; transition: opacity 0.5s ease;
     }
     
     #welcome-prompt {
-      color: white; font-size: 24px; font-weight: 700; margin-bottom: 20px;
+      color: white; font-size: 28px; font-weight: 800; margin-bottom: 20px;
       text-shadow: 0 0 20px var(--primary-blue);
+      letter-spacing: 2px;
     }
 
     #ui-container { position: fixed; top: 20px; left: 20px; z-index: 300; display: flex; gap: 10px; align-items: center; }
@@ -52,7 +53,6 @@
       transition: transform 0.2s ease;
     }
     #compass-hud:hover { transform: scale(1.1); }
-    #compass-hud:active { transform: scale(0.95); }
 
     #compass-ring {
       width: 100%; height: 100%;
@@ -105,7 +105,7 @@
 <body>
 
   <div id="welcome-screen">
-    <div id="welcome-prompt">SELECT A WEEK TO BEGIN</div>
+    <div id="welcome-prompt">SELECT A WEEK TO START</div>
   </div>
 
   <div id="ui-container">
@@ -208,8 +208,10 @@ function loadModel(filename) {
 
         const maxDim = Math.max(size.x, size.z);
         
-        // MODIFIED: Flipped 180 (negative X) and closer (1.5 multiplier instead of 2.5)
-        defaultCameraPos.set(-maxDim * 1.5, size.y * 0.8, 0); 
+        // FLIPPED & ROTATED 90 DEGREES RIGHT:
+        // We now position on the Z-axis instead of X. 
+        // 1.2 multiplier keeps the camera closer to the model.
+        defaultCameraPos.set(0, size.y * 0.7, maxDim * 1.2); 
         defaultTarget.set(0, size.y / 3, 0);
         
         resetCamera();
@@ -227,7 +229,7 @@ function loadModel(filename) {
 
 document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
 document.getElementById('reset-btn').onclick = resetCamera;
-document.getElementById('compass-hud').onclick = resetCamera; // Compass click resets to North
+document.getElementById('compass-hud').onclick = resetCamera; 
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
 
 window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'r') resetCamera(); });
@@ -242,7 +244,8 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // Compass Rotation logic
+    // Compass logic: calculates rotation based on Z/X relationship 
+    // to keep North pointing Up when camera is aligned to our new default.
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
