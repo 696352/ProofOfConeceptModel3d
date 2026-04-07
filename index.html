@@ -19,32 +19,52 @@
       background: linear-gradient(180deg, var(--dark-navy) 0%, var(--sky-blue) 100%);
       font-family: 'Segoe UI', sans-serif; 
     }
+
+    /* Welcome / No Selection State */
+    #welcome-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 12, 29, 0.8);
+      backdrop-filter: blur(10px);
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      z-index: 200; transition: opacity 0.5s ease;
+    }
     
-    #ui-container { position: fixed; top: 20px; left: 20px; z-index: 100; display: flex; gap: 10px; align-items: center; }
+    #welcome-prompt {
+      color: white; font-size: 24px; font-weight: 700; margin-bottom: 20px;
+      text-shadow: 0 0 20px var(--primary-blue);
+    }
+
+    #ui-container { position: fixed; top: 20px; left: 20px; z-index: 300; display: flex; gap: 10px; align-items: center; }
 
     select, .toggle-container { 
-      padding: 10px 20px; border-radius: 50px; 
+      padding: 12px 24px; border-radius: 50px; 
       border: 2px solid var(--primary-blue); 
       background: white; color: var(--primary-blue);
       box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
-      font-size: 14px; font-weight: 600; outline: none;
+      font-size: 14px; font-weight: 700; outline: none; cursor: pointer;
     }
 
+    /* Compass Button */
     #compass-hud {
       position: fixed; bottom: 40px; left: 40px;
-      width: 80px; height: 80px; z-index: 100; pointer-events: none;
+      width: 80px; height: 80px; z-index: 100; 
+      cursor: pointer; border: none; background: none; padding: 0;
+      transition: transform 0.2s ease;
     }
+    #compass-hud:hover { transform: scale(1.1); }
+    #compass-hud:active { transform: scale(0.95); }
+
     #compass-ring {
       width: 100%; height: 100%;
-      border: 2px solid rgba(255,255,255,0.2);
-      border-radius: 50%; background: rgba(0, 0, 0, 0.3);
+      border: 2px solid rgba(255,255,255,0.4);
+      border-radius: 50%; background: rgba(0, 0, 0, 0.5);
       position: relative; display: flex; justify-content: center; align-items: center;
     }
     
     #needle-wrapper {
       position: absolute; width: 100%; height: 100%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      transition: transform 0.05s linear;
+      pointer-events: none;
     }
 
     .needle-diamond {
@@ -84,12 +104,18 @@
 </head>
 <body>
 
+  <div id="welcome-screen">
+    <div id="welcome-prompt">SELECT A WEEK TO BEGIN</div>
+  </div>
+
   <div id="ui-container">
     <select id="model-select">
       <option value="" disabled selected>Select Week</option>
       <option value="Week15Done-v1.glb">Week 15</option>
-      <option value="Week13-v1-v1.glb">Week 13</option> <option value="Week9-v1.glb">Week 9</option>
-      <option value="Week7-v1-v1.glb">Week 7</option> <option value="Week3.glb">Week 3</option>
+      <option value="Week13-v1-v1.glb">Week 13</option>
+      <option value="Week9-v1.glb">Week 9</option>
+      <option value="Week7-v1-v1.glb">Week 7</option>
+      <option value="Week3.glb">Week 3</option>
     </select>
 
     <div class="toggle-container">
@@ -98,7 +124,7 @@
     </div>
   </div>
 
-  <div id="compass-hud">
+  <button id="compass-hud" title="Align to North">
     <div id="compass-ring">
       <div id="needle-wrapper">
         <div class="dir n">N</div>
@@ -107,7 +133,7 @@
         <div class="dir s">S</div>
       </div>
     </div>
-  </div>
+  </button>
 
   <button id="reset-btn">RESET VIEW (R)</button>
 
@@ -148,22 +174,26 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let defaultCameraPos = new THREE.Vector3(60, 40, 0); 
-let defaultTarget = new THREE.Vector3(0, 0, 0);
+let defaultCameraPos = new THREE.Vector3(); 
+let defaultTarget = new THREE.Vector3();
 
 const needleWrapper = document.getElementById('needle-wrapper');
 const progressBar = document.getElementById('progress-bar');
+const welcomeScreen = document.getElementById('welcome-screen');
 
 function resetCamera() {
     controls.reset(); 
     camera.position.copy(defaultCameraPos);
     controls.target.copy(defaultTarget);
     controls.update();
-    renderer.render(scene, camera);
 }
 
 function loadModel(filename) {
     if (currentModel) scene.remove(currentModel);
+    
+    welcomeScreen.style.opacity = '0';
+    setTimeout(() => welcomeScreen.style.display = 'none', 500);
+
     document.getElementById('loading-overlay').style.display = 'flex';
     progressBar.style.width = '0%';
 
@@ -177,7 +207,9 @@ function loadModel(filename) {
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
-        defaultCameraPos.set(maxDim * 2.5, size.y * 0.8, 0); 
+        
+        // MODIFIED: Flipped 180 (negative X) and closer (1.5 multiplier instead of 2.5)
+        defaultCameraPos.set(-maxDim * 1.5, size.y * 0.8, 0); 
         defaultTarget.set(0, size.y / 3, 0);
         
         resetCamera();
@@ -188,7 +220,6 @@ function loadModel(filename) {
             const percent = Math.min((xhr.loaded / xhr.total) * 100, 100);
             progressBar.style.width = percent + '%';
         } else {
-            // Fallback for models that don't report total size correctly
             progressBar.style.width = '95%';
         }
     });
@@ -196,7 +227,9 @@ function loadModel(filename) {
 
 document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
 document.getElementById('reset-btn').onclick = resetCamera;
+document.getElementById('compass-hud').onclick = resetCamera; // Compass click resets to North
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
+
 window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'r') resetCamera(); });
 
 window.onresize = () => {
@@ -209,6 +242,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
+    // Compass Rotation logic
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
