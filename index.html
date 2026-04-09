@@ -24,11 +24,11 @@
       font-family: 'Segoe UI', sans-serif; 
     }
 
-    /* Logo - NOW IN TOP LEFT */
+    /* Logo - NOW IN BOTTOM RIGHT */
     #logo-container {
       position: fixed;
-      top: 20px;
-      left: 25px; /* Swapped from right to left */
+      bottom: 20px;
+      right: 25px;
       z-index: 400;
     }
     #logo-container img {
@@ -41,14 +41,25 @@
       transform: scale(1.05);
     }
 
-    /* Selection UI - Shifted slightly down to not overlap logo */
+    /* Reset Button - NOW IN TOP RIGHT */
+    #reset-btn {
+      position: fixed; 
+      top: 20px; 
+      right: 20px;
+      background: var(--primary-blue); color: white;
+      padding: 12px 25px; border-radius: 50px; border: none;
+      font-size: 14px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 100;
+    }
+
+    /* Selection UI - Top Left */
     #ui-container { 
       position: fixed; 
-      top: 100px; /* Moved down from 20px */
+      top: 20px;
       left: 20px; 
       z-index: 300; 
       display: flex; 
-      flex-direction: column; /* Stacked for better spacing */
+      flex-direction: column;
       gap: 10px; 
       align-items: flex-start; 
     }
@@ -61,26 +72,11 @@
       font-size: 14px; font-weight: 700; outline: none; cursor: pointer;
     }
 
-    /* Welcome Screen */
-    #welcome-screen {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 12, 29, 0.85);
-      backdrop-filter: blur(15px);
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-      z-index: 200; transition: opacity 0.5s ease;
-    }
-    
-    #welcome-prompt {
-      color: white; font-size: 28px; font-weight: 800; margin-bottom: 20px;
-      text-shadow: 0 0 20px var(--primary-blue);
-      letter-spacing: 2px;
-    }
-
-    /* Compass HUD */
+    /* Compass HUD - Bottom Left (next to logo area) */
     #compass-hud {
       position: fixed; 
       bottom: 40px; 
-      right: 40px; /* Swapped from left to right */
+      left: 40px;
       width: 80px; height: 80px; z-index: 100; 
       cursor: pointer; border: none; background: none; padding: 0;
       transition: transform 0.2s ease;
@@ -111,15 +107,19 @@
     .n { top: -25px; color: var(--north-red); }
     .s { bottom: -25px; }
 
-    /* Reset Button - NOW IN BOTTOM LEFT */
-    #reset-btn {
-      position: fixed; 
-      bottom: 20px; 
-      left: 20px; /* Swapped from right to left */
-      background: var(--primary-blue); color: white;
-      padding: 12px 25px; border-radius: 50px; border: none;
-      font-size: 14px; font-weight: 700; cursor: pointer;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 100;
+    /* Welcome Screen */
+    #welcome-screen {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 12, 29, 0.85);
+      backdrop-filter: blur(15px);
+      display: flex; flex-direction: column; justify-content: center; align-items: center;
+      z-index: 200; transition: opacity 0.5s ease;
+    }
+    
+    #welcome-prompt {
+      color: white; font-size: 28px; font-weight: 800; margin-bottom: 20px;
+      text-shadow: 0 0 20px var(--primary-blue);
+      letter-spacing: 2px;
     }
 
     #loading-overlay { 
