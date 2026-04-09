@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
   <title>Construction Progress Viewer</title>
+  
+  <link rel="icon" type="image/png" href="image.png">
+
   <style>
     :root {
       --primary-blue: #007bff;
@@ -20,7 +24,7 @@
       font-family: 'Segoe UI', sans-serif; 
     }
 
-    /* Logo Styling */
+    /* Logo in the Top Right */
     #logo-container {
       position: fixed;
       top: 20px;
@@ -28,7 +32,7 @@
       z-index: 400;
     }
     #logo-container img {
-      height: 70px; /* Adjust this number to change logo size */
+      height: 70px; 
       width: auto;
       filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
       transition: transform 0.3s ease;
@@ -37,7 +41,7 @@
       transform: scale(1.05);
     }
 
-    /* Welcome Screen */
+    /* Welcome Screen overlay */
     #welcome-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0, 12, 29, 0.85);
@@ -62,7 +66,7 @@
       font-size: 14px; font-weight: 700; outline: none; cursor: pointer;
     }
 
-    /* Compass HUD (Bottom Left) */
+    /* Compass HUD logic */
     #compass-hud {
       position: fixed; bottom: 40px; left: 40px;
       width: 80px; height: 80px; z-index: 100; 
@@ -95,7 +99,7 @@
     .n { top: -25px; color: var(--north-red); }
     .s { bottom: -25px; }
 
-    /* Reset Button (Bottom Right) */
+    /* Reset Button */
     #reset-btn {
       position: fixed; bottom: 20px; right: 20px;
       background: var(--primary-blue); color: white;
@@ -123,7 +127,7 @@
 <body>
 
   <div id="logo-container">
-    <img src="image.png" alt="Company Logo">
+    <img src="image.png" alt="Aviation Logo">
   </div>
 
   <div id="welcome-screen">
@@ -231,18 +235,21 @@ function loadModel(filename) {
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
+        // Center the model so it rotates around its middle
         currentModel.position.set(-center.x, -box.min.y, -center.z);
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
         
-        // --- Side View ---
+        // Define Reset/Side View (X-axis)
         sideViewPos.set(-maxDim * 1.5, size.y * 0.7, 0); 
         
-        // --- North View ---
+        // Define North View (Z-axis) - Needle will point UP
         northViewPos.set(0, size.y * 0.7, maxDim * 1.5); 
         
         defaultTarget.set(0, size.y / 3, 0);
+        
+        // Default starting position
         resetToSideView();
         
         document.getElementById('loading-overlay').style.display = 'none';
@@ -274,6 +281,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
+    // Rotate compass needle based on camera position relative to center
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
