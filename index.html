@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Portfolio Viewer - Rotated View</title>
+  <title>3D Portfolio Viewer - 180 Flip</title>
   <style>
     :root {
       --primary-blue: #007bff;
@@ -206,10 +206,9 @@ function loadModel(filename) {
 
         const maxDim = Math.max(size.x, size.z);
         
-        // --- UPDATED VIEW LOGIC ---
-        // Moved maxDim from Z to X to rotate the view 90 degrees left.
-        // If it rotates to the "wrong" side, change (maxDim * 1.2) to (-maxDim * 1.2)
-        defaultCameraPos.set(maxDim * 1.2, size.y * 0.7, 0); 
+        // --- FLIPPED 180 DEGREES ---
+        // Setting the X position to negative flips the camera to the other side.
+        defaultCameraPos.set(-maxDim * 1.2, size.y * 0.7, 0); 
         defaultTarget.set(0, size.y / 3, 0);
         
         resetCamera();
@@ -242,9 +241,6 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // The compass calculates rotation based on camera position relative to target.
-    // Because we shifted the default camera to the X-axis, the needle will 
-    // stay synced with the new perspective.
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
