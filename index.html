@@ -24,11 +24,11 @@
       font-family: 'Segoe UI', sans-serif; 
     }
 
-    /* Logo in the Top Right */
+    /* Logo - NOW IN TOP LEFT */
     #logo-container {
       position: fixed;
       top: 20px;
-      right: 25px;
+      left: 25px; /* Swapped from right to left */
       z-index: 400;
     }
     #logo-container img {
@@ -41,7 +41,27 @@
       transform: scale(1.05);
     }
 
-    /* Welcome Screen overlay */
+    /* Selection UI - Shifted slightly down to not overlap logo */
+    #ui-container { 
+      position: fixed; 
+      top: 100px; /* Moved down from 20px */
+      left: 20px; 
+      z-index: 300; 
+      display: flex; 
+      flex-direction: column; /* Stacked for better spacing */
+      gap: 10px; 
+      align-items: flex-start; 
+    }
+
+    select, .toggle-container { 
+      padding: 12px 24px; border-radius: 50px; 
+      border: 2px solid var(--primary-blue); 
+      background: white; color: var(--primary-blue);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
+      font-size: 14px; font-weight: 700; outline: none; cursor: pointer;
+    }
+
+    /* Welcome Screen */
     #welcome-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0, 12, 29, 0.85);
@@ -56,19 +76,11 @@
       letter-spacing: 2px;
     }
 
-    #ui-container { position: fixed; top: 20px; left: 20px; z-index: 300; display: flex; gap: 10px; align-items: center; }
-
-    select, .toggle-container { 
-      padding: 12px 24px; border-radius: 50px; 
-      border: 2px solid var(--primary-blue); 
-      background: white; color: var(--primary-blue);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
-      font-size: 14px; font-weight: 700; outline: none; cursor: pointer;
-    }
-
-    /* Compass HUD logic */
+    /* Compass HUD */
     #compass-hud {
-      position: fixed; bottom: 40px; left: 40px;
+      position: fixed; 
+      bottom: 40px; 
+      right: 40px; /* Swapped from left to right */
       width: 80px; height: 80px; z-index: 100; 
       cursor: pointer; border: none; background: none; padding: 0;
       transition: transform 0.2s ease;
@@ -99,9 +111,11 @@
     .n { top: -25px; color: var(--north-red); }
     .s { bottom: -25px; }
 
-    /* Reset Button */
+    /* Reset Button - NOW IN BOTTOM LEFT */
     #reset-btn {
-      position: fixed; bottom: 20px; right: 20px;
+      position: fixed; 
+      bottom: 20px; 
+      left: 20px; /* Swapped from right to left */
       background: var(--primary-blue); color: white;
       padding: 12px 25px; border-radius: 50px; border: none;
       font-size: 14px; font-weight: 700; cursor: pointer;
@@ -235,21 +249,15 @@ function loadModel(filename) {
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        // Center the model so it rotates around its middle
         currentModel.position.set(-center.x, -box.min.y, -center.z);
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
         
-        // Define Reset/Side View (X-axis)
         sideViewPos.set(-maxDim * 1.5, size.y * 0.7, 0); 
-        
-        // Define North View (Z-axis) - Needle will point UP
         northViewPos.set(0, size.y * 0.7, maxDim * 1.5); 
         
         defaultTarget.set(0, size.y / 3, 0);
-        
-        // Default starting position
         resetToSideView();
         
         document.getElementById('loading-overlay').style.display = 'none';
@@ -281,7 +289,6 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // Rotate compass needle based on camera position relative to center
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
