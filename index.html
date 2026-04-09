@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Portfolio Viewer - 180 Flip</title>
+  <title>3D Portfolio Viewer - Dual Reset</title>
   <style>
     :root {
       --primary-blue: #007bff;
@@ -20,6 +20,7 @@
       font-family: 'Segoe UI', sans-serif; 
     }
 
+    /* Welcome / No Selection State */
     #welcome-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0, 12, 29, 0.85);
@@ -44,6 +45,7 @@
       font-size: 14px; font-weight: 700; outline: none; cursor: pointer;
     }
 
+    /* Compass HUD (Bottom Left) */
     #compass-hud {
       position: fixed; bottom: 40px; left: 40px;
       width: 80px; height: 80px; z-index: 100; 
@@ -76,6 +78,7 @@
     .n { top: -25px; color: var(--north-red); }
     .s { bottom: -25px; }
 
+    /* Reset Button (Bottom Right) */
     #reset-btn {
       position: fixed; bottom: 20px; right: 20px;
       background: var(--primary-blue); color: white;
@@ -133,7 +136,7 @@
     </div>
   </button>
 
-  <button id="reset-btn">RESET VIEW (R)</button>
+  <button id="reset-btn">SIDE VIEW (R)</button>
 
   <div id="loading-overlay">
     <div id="status-text">LOADING MODEL...</div>
@@ -172,16 +175,24 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let defaultCameraPos = new THREE.Vector3(); 
+let sideViewPos = new THREE.Vector3(); 
+let northViewPos = new THREE.Vector3(); 
 let defaultTarget = new THREE.Vector3();
 
 const needleWrapper = document.getElementById('needle-wrapper');
 const progressBar = document.getElementById('progress-bar');
 const welcomeScreen = document.getElementById('welcome-screen');
 
-function resetCamera() {
-    controls.reset(); 
-    camera.position.copy(defaultCameraPos);
+// ACTION 1: Snap to Side View
+function resetToSideView() {
+    camera.position.copy(sideViewPos);
+    controls.target.copy(defaultTarget);
+    controls.update();
+}
+
+// ACTION 2: Snap to North View (Needle Pointing Up)
+function alignToNorth() {
+    camera.position.copy(northViewPos);
     controls.target.copy(defaultTarget);
     controls.update();
 }
@@ -206,30 +217,40 @@ function loadModel(filename) {
 
         const maxDim = Math.max(size.x, size.z);
         
-        // --- FLIPPED 180 DEGREES ---
-        // Setting the X position to negative flips the camera to the other side.
-        defaultCameraPos.set(-maxDim * 1.2, size.y * 0.7, 0); 
+        // Define Side View Position (X-Axis)
+        sideViewPos.set(-maxDim * 1.5, size.y * 0.7, 0); 
+        
+        // Define North View Position (Z-Axis)
+        // This makes the needle point straight up when active
+        northViewPos.set(0, size.y * 0.7, maxDim * 1.5); 
+        
         defaultTarget.set(0, size.y / 3, 0);
         
-        resetCamera();
+        // Default to Side View on load
+        resetToSideView();
+        
         document.getElementById('loading-overlay').style.display = 'none';
     }, 
     (xhr) => {
         if (xhr.lengthComputable) {
             const percent = Math.min((xhr.loaded / xhr.total) * 100, 100);
             progressBar.style.width = percent + '%';
-        } else {
-            progressBar.style.width = '95%';
         }
     });
 }
 
 document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
-document.getElementById('reset-btn').onclick = resetCamera;
-document.getElementById('compass-hud').onclick = resetCamera; 
+
+// Assigned unique functions to each button
+document.getElementById('reset-btn').onclick = resetToSideView;
+document.getElementById('compass-hud').onclick = alignToNorth; 
+
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
 
-window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'r') resetCamera(); });
+window.addEventListener('keydown', (e) => { 
+    if (e.key.toLowerCase() === 'r') resetToSideView(); 
+    if (e.key.toLowerCase() === 'n') alignToNorth(); 
+});
 
 window.onresize = () => {
     camera.aspect = window.innerWidth / window.innerHeight;
@@ -241,6 +262,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
+    // Compass logic: Needle points toward North (Positive Z)
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
