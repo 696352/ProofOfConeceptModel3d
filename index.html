@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>3D Portfolio Viewer - Dual Reset</title>
+  <title>Construction Progress Viewer</title>
   <style>
     :root {
       --primary-blue: #007bff;
@@ -18,6 +18,22 @@
       overflow: hidden; 
       background: linear-gradient(180deg, var(--dark-navy) 0%, var(--sky-blue) 100%);
       font-family: 'Segoe UI', sans-serif; 
+    }
+
+    /* Logo Styling */
+    #logo-container {
+      position: fixed;
+      top: 20px;
+      right: 25px;
+      z-index: 400;
+    }
+    #logo-container img {
+      height: 60px; /* Adjust size as needed */
+      filter: drop-shadow(0 0 10px rgba(0, 123, 255, 0.5));
+      transition: transform 0.3s ease;
+    }
+    #logo-container img:hover {
+      transform: scale(1.05);
     }
 
     /* Welcome / No Selection State */
@@ -105,6 +121,10 @@
 </head>
 <body>
 
+  <div id="logo-container">
+    <img src="https://via.placeholder.com/150x60/000c1d/007bff?text=YOUR+LOGO" alt="Logo">
+  </div>
+
   <div id="welcome-screen">
     <div id="welcome-prompt">SELECT A WEEK TO START</div>
   </div>
@@ -136,7 +156,7 @@
     </div>
   </button>
 
-  <button id="reset-btn">SIDE VIEW (R)</button>
+  <button id="reset-btn">RESET VIEW (R)</button>
 
   <div id="loading-overlay">
     <div id="status-text">LOADING MODEL...</div>
@@ -183,14 +203,12 @@ const needleWrapper = document.getElementById('needle-wrapper');
 const progressBar = document.getElementById('progress-bar');
 const welcomeScreen = document.getElementById('welcome-screen');
 
-// ACTION 1: Snap to Side View
 function resetToSideView() {
     camera.position.copy(sideViewPos);
     controls.target.copy(defaultTarget);
     controls.update();
 }
 
-// ACTION 2: Snap to North View (Needle Pointing Up)
 function alignToNorth() {
     camera.position.copy(northViewPos);
     controls.target.copy(defaultTarget);
@@ -217,16 +235,14 @@ function loadModel(filename) {
 
         const maxDim = Math.max(size.x, size.z);
         
-        // Define Side View Position (X-Axis)
+        // Reset View Position (X-Axis)
         sideViewPos.set(-maxDim * 1.5, size.y * 0.7, 0); 
         
-        // Define North View Position (Z-Axis)
-        // This makes the needle point straight up when active
+        // North View Position (Z-Axis)
         northViewPos.set(0, size.y * 0.7, maxDim * 1.5); 
         
         defaultTarget.set(0, size.y / 3, 0);
         
-        // Default to Side View on load
         resetToSideView();
         
         document.getElementById('loading-overlay').style.display = 'none';
@@ -240,16 +256,12 @@ function loadModel(filename) {
 }
 
 document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
-
-// Assigned unique functions to each button
 document.getElementById('reset-btn').onclick = resetToSideView;
 document.getElementById('compass-hud').onclick = alignToNorth; 
-
 document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
 
 window.addEventListener('keydown', (e) => { 
     if (e.key.toLowerCase() === 'r') resetToSideView(); 
-    if (e.key.toLowerCase() === 'n') alignToNorth(); 
 });
 
 window.onresize = () => {
@@ -262,7 +274,6 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // Compass logic: Needle points toward North (Positive Z)
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
