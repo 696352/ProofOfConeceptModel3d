@@ -3,9 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
   <title>Construction Progress Viewer</title>
-  
   <link rel="icon" type="image/png" href="image.png">
 
   <style>
@@ -20,280 +18,160 @@
     body { 
       margin: 0; 
       overflow: hidden; 
-      background: linear-gradient(180deg, var(--dark-navy) 0%, var(--sky-blue) 100%);
+      background: radial-gradient(circle at center, #1a2a44 0%, var(--dark-navy) 100%);
       font-family: 'Segoe UI', sans-serif; 
     }
 
-    /* Logo - NOW IN BOTTOM RIGHT */
-    #logo-container {
-      position: fixed;
-      bottom: 20px;
-      right: 25px;
-      z-index: 400;
-    }
-    #logo-container img {
-      height: 70px; 
-      width: auto;
-      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
-      transition: transform 0.3s ease;
-    }
-    #logo-container img:hover {
-      transform: scale(1.05);
+    /* The "Hole" Illusion in the background */
+    #hole-effect {
+        position: fixed;
+        top: 50%; left: 50%;
+        transform: translate(-50%, -50%);
+        width: 600px; height: 300px;
+        background: rgba(0, 0, 0, 0.4);
+        border-radius: 50%;
+        box-shadow: inset 0 20px 50px rgba(0,0,0,0.8), 0 0 20px rgba(123, 174, 247, 0.2);
+        z-index: 0;
+        pointer-events: none;
     }
 
-    /* Reset Button - NOW IN TOP RIGHT */
+    /* Blur effect for the 3D scene background */
+    canvas {
+        display: block;
+        transition: filter 0.6s cubic-bezier(0.2, 1, 0.3, 1);
+        z-index: 1;
+    }
+    .blur-scene {
+        filter: blur(8px) brightness(0.7);
+    }
+
+    #logo-container { position: fixed; bottom: 20px; right: 25px; z-index: 400; }
+    #logo-container img { height: 70px; filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5)); }
+
     #reset-btn {
-      position: fixed; 
-      top: 20px; 
-      right: 20px;
+      position: fixed; top: 20px; right: 20px;
       background: var(--primary-blue); color: white;
       padding: 12px 25px; border-radius: 50px; border: none;
       font-size: 14px; font-weight: 700; cursor: pointer;
       box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 100;
     }
 
-    /* Selection UI - Top Left */
-    #ui-container { 
-      position: fixed; 
-      top: 20px;
-      left: 20px; 
-      z-index: 300; 
-      display: flex; 
-      flex-direction: column;
-      gap: 10px; 
-      align-items: flex-start; 
-    }
+    #ui-container { position: fixed; top: 20px; left: 20px; z-index: 300; display: flex; flex-direction: column; gap: 10px; }
+    select, .toggle-container { padding: 12px 24px; border-radius: 50px; border: 2px solid var(--primary-blue); background: white; color: var(--primary-blue); font-weight: 700; cursor: pointer; }
 
-    select, .toggle-container { 
-      padding: 12px 24px; border-radius: 50px; 
-      border: 2px solid var(--primary-blue); 
-      background: white; color: var(--primary-blue);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.4); 
-      font-size: 14px; font-weight: 700; outline: none; cursor: pointer;
-    }
-
-    /* Compass HUD - Bottom Left (next to logo area) */
-    #compass-hud {
-      position: fixed; 
-      bottom: 40px; 
-      left: 40px;
-      width: 80px; height: 80px; z-index: 100; 
-      cursor: pointer; border: none; background: none; padding: 0;
-      transition: transform 0.2s ease;
-    }
-    #compass-hud:hover { transform: scale(1.1); }
-
-    #compass-ring {
-      width: 100%; height: 100%;
-      border: 2px solid rgba(255,255,255,0.4);
-      border-radius: 50%; background: rgba(0, 0, 0, 0.5);
-      position: relative; display: flex; justify-content: center; align-items: center;
-    }
-    
-    #needle-wrapper {
-      position: absolute; width: 100%; height: 100%;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      pointer-events: none;
-    }
-
-    .needle-diamond {
-      width: 14px; height: 35px;
-      clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-    }
-    .north-needle { background: var(--north-red); box-shadow: 0 0 15px var(--north-red); }
+    #compass-hud { position: fixed; bottom: 40px; left: 40px; width: 80px; height: 80px; z-index: 100; cursor: pointer; border: none; background: none; }
+    #compass-ring { width: 100%; height: 100%; border: 2px solid rgba(255,255,255,0.4); border-radius: 50%; background: rgba(0, 0, 0, 0.5); position: relative; display: flex; justify-content: center; align-items: center; }
+    #needle-wrapper { position: absolute; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    .needle-diamond { width: 14px; height: 35px; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
+    .north-needle { background: var(--north-red); }
     .south-needle { background: var(--south-white); transform: rotate(180deg); }
 
-    .dir { position: absolute; font-weight: 900; font-size: 14px; color: white; }
-    .n { top: -25px; color: var(--north-red); }
-    .s { bottom: -25px; }
-
-    /* Welcome Screen */
-    #welcome-screen {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 12, 29, 0.85);
-      backdrop-filter: blur(15px);
-      display: flex; flex-direction: column; justify-content: center; align-items: center;
-      z-index: 200; transition: opacity 0.5s ease;
-    }
-    
-    #welcome-prompt {
-      color: white; font-size: 28px; font-weight: 800; margin-bottom: 20px;
-      text-shadow: 0 0 20px var(--primary-blue);
-      letter-spacing: 2px;
-    }
-
-    #loading-overlay { 
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-      background: var(--dark-navy); display: none; flex-direction: column; 
-      justify-content: center; align-items: center; z-index: 999; color: white; 
-    }
-    .bar-container { 
-      width: 200px; height: 10px; background: rgba(255,255,255,0.1); 
-      margin-top: 15px; border-radius: 10px; overflow: hidden; 
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-    #progress-bar { 
-      width: 0%; height: 100%; background: var(--primary-blue); 
-      transition: width 0.3s ease-out;
-    }
+    #loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--dark-navy); display: none; flex-direction: column; justify-content: center; align-items: center; z-index: 999; color: white; }
+    .bar-container { width: 200px; height: 10px; background: rgba(255,255,255,0.1); margin-top: 15px; border-radius: 10px; overflow: hidden; }
+    #progress-bar { width: 0%; height: 100%; background: var(--primary-blue); }
   </style>
 </head>
 <body>
 
+  <div id="hole-effect"></div>
+
   <div id="logo-container">
     <img src="image.png" alt="Aviation Logo">
-  </div>
-
-  <div id="welcome-screen">
-    <div id="welcome-prompt">SELECT A WEEK TO START</div>
   </div>
 
   <div id="ui-container">
     <select id="model-select">
       <option value="" disabled selected>Select Week</option>
       <option value="Week15Done-v1.glb">Week 15</option>
-      <option value="Week13-v1-v1.glb">Week 13</option>
-      <option value="Week9-v1.glb">Week 9</option>
-      <option value="Week7-v1-v1.glb">Week 7</option>
       <option value="Week3.glb">Week 3</option>
     </select>
-
-    <div class="toggle-container">
-      Grid
-      <input type="checkbox" id="grid-toggle" style="margin-left: 10px;">
-    </div>
+    <div class="toggle-container">Grid <input type="checkbox" id="grid-toggle"></div>
   </div>
 
-  <button id="compass-hud" title="Align to North">
-    <div id="compass-ring">
-      <div id="needle-wrapper">
-        <div class="dir n">N</div>
-        <div class="needle-diamond north-needle"></div>
-        <div class="needle-diamond south-needle"></div>
-        <div class="dir s">S</div>
-      </div>
-    </div>
-  </button>
-
+  <button id="compass-hud"><div id="compass-ring"><div id="needle-wrapper"><div class="needle-diamond north-needle"></div><div class="needle-diamond south-needle"></div></div></div></button>
   <button id="reset-btn">RESET VIEW (R)</button>
 
-  <div id="loading-overlay">
-    <div id="status-text">LOADING MODEL...</div>
-    <div class="bar-container"><div id="progress-bar"></div></div>
-  </div>
+  <div id="loading-overlay"><div class="bar-container"><div id="progress-bar"></div></div></div>
 
 <script type="module">
 import * as THREE from "https://esm.sh/three@0.160.0";
 import { OrbitControls } from "https://esm.sh/three@0.160.0/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GLTFLoader.js";
-import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.1;
 
 scene.add(new THREE.AmbientLight(0xffffff, 2.5));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
 sun.position.set(10, 50, 10);
 scene.add(sun);
 
-const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xffffff);
-grid.visible = false;
-scene.add(grid);
-
-const draco = new DRACOLoader();
-draco.setDecoderPath("https://www.gstatic.com/draco/versioned/decoders/1.5.6/");
-const loader = new GLTFLoader();
-loader.setDRACOLoader(draco);
-
 let currentModel = null;
-let sideViewPos = new THREE.Vector3(); 
-let northViewPos = new THREE.Vector3(); 
-let defaultTarget = new THREE.Vector3();
+let sideViewPos = new THREE.Vector3();
+let targetY = 0; // The base height (in the hole)
+let liftY = 0;   // The current animated height
 
 const needleWrapper = document.getElementById('needle-wrapper');
-const progressBar = document.getElementById('progress-bar');
-const welcomeScreen = document.getElementById('welcome-screen');
+const canvas = renderer.domElement;
 
-function resetToSideView() {
-    camera.position.copy(sideViewPos);
-    controls.target.copy(defaultTarget);
-    controls.update();
-}
+// Detection for Interaction
+controls.addEventListener('start', () => {
+    targetY = 5; // Height to raise when clicked
+    canvas.classList.add('blur-scene');
+});
 
-function alignToNorth() {
-    camera.position.copy(northViewPos);
-    controls.target.copy(defaultTarget);
-    controls.update();
-}
+controls.addEventListener('end', () => {
+    targetY = 0; // Return to hole
+    canvas.classList.remove('blur-scene');
+});
 
 function loadModel(filename) {
     if (currentModel) scene.remove(currentModel);
-    
-    welcomeScreen.style.opacity = '0';
-    setTimeout(() => welcomeScreen.style.display = 'none', 500);
-
     document.getElementById('loading-overlay').style.display = 'flex';
-    progressBar.style.width = '0%';
 
-    loader.load(filename, (gltf) => {
+    new GLTFLoader().load(filename, (gltf) => {
         currentModel = gltf.scene;
         const box = new THREE.Box3().setFromObject(currentModel);
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        currentModel.position.set(-center.x, -box.min.y, -center.z);
+        currentModel.position.set(-center.x, 0, -center.z); // Start at Y=0 (the hole)
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
+        sideViewPos.set(-maxDim * 1.5, size.y * 0.8, 0);
         
-        sideViewPos.set(-maxDim * 1.5, size.y * 0.7, 0); 
-        northViewPos.set(0, size.y * 0.7, maxDim * 1.5); 
-        
-        defaultTarget.set(0, size.y / 3, 0);
-        resetToSideView();
-        
+        camera.position.copy(sideViewPos);
+        controls.target.set(0, size.y / 2, 0);
         document.getElementById('loading-overlay').style.display = 'none';
-    }, 
-    (xhr) => {
-        if (xhr.lengthComputable) {
-            const percent = Math.min((xhr.loaded / xhr.total) * 100, 100);
-            progressBar.style.width = percent + '%';
-        }
     });
 }
-
-document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
-document.getElementById('reset-btn').onclick = resetToSideView;
-document.getElementById('compass-hud').onclick = alignToNorth; 
-document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
-
-window.addEventListener('keydown', (e) => { 
-    if (e.key.toLowerCase() === 'r') resetToSideView(); 
-});
-
-window.onresize = () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-};
 
 function animate() {
     requestAnimationFrame(animate);
     controls.update();
+
+    // Smoothly interpolate the "Lift" height
+    if (currentModel) {
+        liftY += (targetY - liftY) * 0.1; // Smooth lerp
+        currentModel.position.y = liftY;
+    }
 
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
     renderer.render(scene, camera);
 }
+
+document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
+document.getElementById('reset-btn').onclick = () => { camera.position.copy(sideViewPos); controls.update(); };
+
 animate();
 </script>
 </body>
