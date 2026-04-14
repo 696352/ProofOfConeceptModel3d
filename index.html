@@ -16,13 +16,13 @@
     body { 
       margin: 0; 
       overflow: hidden; 
-      background: linear-gradient(180deg, var(--dark-navy) 0%, var(--sky-blue) 100%);
+      background: #000c1d; /* Solid dark fallback */
       font-family: 'Segoe UI', sans-serif; 
     }
 
     #welcome-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0, 12, 29, 0.85);
+      background: rgba(0, 12, 29, 0.9);
       backdrop-filter: blur(15px);
       display: flex; flex-direction: column; justify-content: center; align-items: center;
       z-index: 200; transition: opacity 0.5s ease;
@@ -31,7 +31,6 @@
     #welcome-prompt {
       color: white; font-size: 28px; font-weight: 800; margin-bottom: 20px;
       text-shadow: 0 0 20px var(--primary-blue);
-      letter-spacing: 2px;
     }
 
     #ui-container { position: fixed; top: 20px; left: 20px; z-index: 300; display: flex; gap: 10px; align-items: center; }
@@ -46,8 +45,7 @@
 
     #compass-hud {
       position: fixed; bottom: 40px; left: 40px;
-      width: 80px; height: 80px; z-index: 100; 
-      cursor: pointer; border: none; background: none; padding: 0;
+      width: 80px; height: 80px; z-index: 100; cursor: pointer; border: none; background: none;
     }
 
     #compass-ring {
@@ -60,14 +58,10 @@
     #needle-wrapper {
       position: absolute; width: 100%; height: 100%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      pointer-events: none;
     }
 
-    .needle-diamond {
-      width: 14px; height: 35px;
-      clip-path: polygon(50% 0%, 100% 100%, 0% 100%);
-    }
-    .north-needle { background: var(--north-red); box-shadow: 0 0 15px var(--north-red); }
+    .needle-diamond { width: 14px; height: 35px; clip-path: polygon(50% 0%, 100% 100%, 0% 100%); }
+    .north-needle { background: var(--north-red); }
     .south-needle { background: var(--south-white); transform: rotate(180deg); }
 
     .dir { position: absolute; font-weight: 900; font-size: 14px; color: white; }
@@ -78,8 +72,7 @@
       position: fixed; bottom: 20px; right: 20px;
       background: var(--primary-blue); color: white;
       padding: 12px 25px; border-radius: 50px; border: none;
-      font-size: 14px; font-weight: 700; cursor: pointer;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 100;
+      font-size: 14px; font-weight: 700; cursor: pointer; z-index: 100;
     }
 
     #loading-overlay { 
@@ -87,15 +80,8 @@
       background: var(--dark-navy); display: none; flex-direction: column; 
       justify-content: center; align-items: center; z-index: 999; color: white; 
     }
-    .bar-container { 
-      width: 200px; height: 10px; background: rgba(255,255,255,0.1); 
-      margin-top: 15px; border-radius: 10px; overflow: hidden; 
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-    #progress-bar { 
-      width: 0%; height: 100%; background: var(--primary-blue); 
-      transition: width 0.3s ease-out;
-    }
+    .bar-container { width: 200px; height: 10px; background: rgba(255,255,255,0.1); margin-top: 15px; border-radius: 10px; overflow: hidden; }
+    #progress-bar { width: 0%; height: 100%; background: var(--primary-blue); transition: width 0.3s; }
   </style>
 </head>
 <body>
@@ -113,28 +99,14 @@
       <option value="Week7-v1-v1.glb">Week 7</option>
       <option value="Week3.glb">Week 3</option>
     </select>
-
-    <div class="toggle-container">
-      Grid
-      <input type="checkbox" id="grid-toggle" style="margin-left: 10px;">
-    </div>
+    <div class="toggle-container">Grid <input type="checkbox" id="grid-toggle"></div>
   </div>
 
-  <button id="compass-hud" title="Align to North">
-    <div id="compass-ring">
-      <div id="needle-wrapper">
-        <div class="dir n">N</div>
-        <div class="needle-diamond north-needle"></div>
-        <div class="needle-diamond south-needle"></div>
-        <div class="dir s">S</div>
-      </div>
-    </div>
-  </button>
-
+  <button id="compass-hud"><div id="compass-ring"><div id="needle-wrapper"><div class="dir n">N</div><div class="needle-diamond north-needle"></div><div class="needle-diamond south-needle"></div><div class="dir s">S</div></div></div></button>
   <button id="reset-btn">RESET VIEW (R)</button>
 
   <div id="loading-overlay">
-    <div id="status-text">LOADING MODEL...</div>
+    <div id="status-text">LOADING...</div>
     <div class="bar-container"><div id="progress-bar"></div></div>
   </div>
 
@@ -145,22 +117,20 @@ import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GL
 import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
 const scene = new THREE.Scene();
-// Increased far plane to 10000 so background doesn't get cut off
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 20000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
 document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 
-scene.add(new THREE.AmbientLight(0xffffff, 2.5));
-const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-sun.position.set(10, 50, 10);
+scene.add(new THREE.AmbientLight(0xffffff, 3));
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+sun.position.set(50, 200, 50);
 scene.add(sun);
 
-const grid = new THREE.GridHelper(100, 100, 0x007bff, 0xffffff);
+const grid = new THREE.GridHelper(200, 50, 0x007bff, 0x444444);
 grid.visible = false;
 scene.add(grid);
 
@@ -170,18 +140,28 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let defaultCameraPos = new THREE.Vector3(); 
-let defaultTarget = new THREE.Vector3();
+let defaultCameraPos = new THREE.Vector3(0, 50, 150); 
+let defaultTarget = new THREE.Vector3(0, 0, 0);
 
-// LOAD BACKGROUND 2 - Centered Automatically
-loader.load('LowBackground_2.glb', (gltf) => {
+// --- BACKGROUND LOADING ---
+// We try LowBackground.glb since Background_2 seems to be empty
+loader.load('LowBackground.glb', (gltf) => {
     const bg = gltf.scene;
+    bg.traverse(n => { if(n.isMesh) { n.material.side = THREE.DoubleSide; n.material.transparent = true; } });
+    
+    // Center background
     const box = new THREE.Box3().setFromObject(bg);
     const center = box.getCenter(new THREE.Vector3());
-    // Move the background so its center is at 0,0,0
     bg.position.set(-center.x, -center.y, -center.z);
+    bg.scale.set(10, 10, 10); // Scale up if it's small
     scene.add(bg);
-}, undefined, (err) => console.error("Background load failed", err));
+}, undefined, (e) => {
+    console.log("Background file not found, using visual fallback.");
+    // Visual Fallback: A giant star field sphere
+    const geo = new THREE.SphereGeometry(5000, 32, 32);
+    const mat = new THREE.MeshBasicMaterial({ color: 0x001533, side: THREE.BackSide });
+    scene.add(new THREE.Mesh(geo, mat));
+});
 
 function resetCamera() {
     controls.reset(); 
@@ -206,15 +186,14 @@ function loadModel(filename) {
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
-        // Snap North Up (Z-axis alignment)
-        defaultCameraPos.set(0, size.y * 0.7, maxDim * 1.5); 
-        defaultTarget.set(0, size.y / 3, 0);
+        // Position camera on Z-axis (North Up)
+        defaultCameraPos.set(0, size.y * 0.8, maxDim * 2); 
+        defaultTarget.set(0, size.y / 2, 0);
         
         resetCamera();
         document.getElementById('loading-overlay').style.display = 'none';
-    }, 
-    (xhr) => {
-        const p = Math.min((xhr.loaded / (xhr.total || 1000000)) * 100, 100);
+    }, (xhr) => {
+        const p = (xhr.loaded / (xhr.total || 10000000)) * 100;
         document.getElementById('progress-bar').style.width = p + '%';
     });
 }
