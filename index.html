@@ -20,7 +20,7 @@
       font-family: 'Segoe UI', sans-serif; 
     }
 
-    /* Welcome State */
+    /* Welcome / Start State */
     #welcome-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0, 12, 29, 0.85);
@@ -37,6 +37,7 @@
 
     #ui-container { position: fixed; top: 20px; left: 20px; z-index: 300; display: flex; gap: 10px; align-items: center; }
 
+    /* Oval Dropdown Styling */
     select, .toggle-container { 
       padding: 12px 24px; border-radius: 50px; 
       border: 2px solid var(--primary-blue); 
@@ -86,6 +87,7 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 100;
     }
 
+    /* Loading UI */
     #loading-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
       background: var(--dark-navy); display: none; flex-direction: column; 
@@ -182,8 +184,8 @@ const needleWrapper = document.getElementById('needle-wrapper');
 const progressBar = document.getElementById('progress-bar');
 const welcomeScreen = document.getElementById('welcome-screen');
 
-// 1. Load Background File Immediately
-loader.load('LowBackground.glb', (gltf) => {
+// Load the NEW Background immediately
+loader.load('LowBackground_2.glb', (gltf) => {
     backgroundModel = gltf.scene;
     scene.add(backgroundModel);
 });
@@ -198,6 +200,7 @@ function resetCamera() {
 function loadModel(filename) {
     if (currentModel) scene.remove(currentModel);
     
+    // Fade out the welcome screen on first selection
     welcomeScreen.style.opacity = '0';
     setTimeout(() => welcomeScreen.style.display = 'none', 500);
 
@@ -210,12 +213,14 @@ function loadModel(filename) {
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
+        // Center and place on ground
         currentModel.position.set(-center.x, -box.min.y, -center.z);
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
         
-        // Flipped to opposite side and North Up alignment
+        // Flipped and Rotated logic: 
+        // Placing camera on the Z axis aligns North (red) to point UP on the screen
         defaultCameraPos.set(0, size.y * 0.7, maxDim * 1.2); 
         defaultTarget.set(0, size.y / 3, 0);
         
@@ -249,7 +254,7 @@ function animate() {
     requestAnimationFrame(animate);
     controls.update();
 
-    // Compass needle points North (Up) based on Z/X relationship
+    // Rotates the needle based on camera position relative to the Z-axis (North)
     const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
     needleWrapper.style.transform = `rotate(${angle}rad)`;
 
