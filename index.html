@@ -219,4 +219,25 @@ function loadModel(filename) {
     });
 }
 
-document.getElementById('grid-toggle').onchange = (e) => grid.visible =
+document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
+document.getElementById('reset-btn').onclick = resetCamera;
+document.getElementById('compass-hud').onclick = resetCamera; 
+document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
+
+window.onresize = () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+};
+
+function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+    document.getElementById('needle-wrapper').style.transform = `rotate(${angle}rad)`;
+    renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
