@@ -20,7 +20,6 @@
       font-family: 'Segoe UI', sans-serif; 
     }
 
-    /* Welcome / Start State */
     #welcome-screen {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0, 12, 29, 0.85);
@@ -37,7 +36,6 @@
 
     #ui-container { position: fixed; top: 20px; left: 20px; z-index: 300; display: flex; gap: 10px; align-items: center; }
 
-    /* Oval Dropdown Styling */
     select, .toggle-container { 
       padding: 12px 24px; border-radius: 50px; 
       border: 2px solid var(--primary-blue); 
@@ -46,14 +44,11 @@
       font-size: 14px; font-weight: 700; outline: none; cursor: pointer;
     }
 
-    /* Compass Button */
     #compass-hud {
       position: fixed; bottom: 40px; left: 40px;
       width: 80px; height: 80px; z-index: 100; 
       cursor: pointer; border: none; background: none; padding: 0;
-      transition: transform 0.2s ease;
     }
-    #compass-hud:hover { transform: scale(1.1); }
 
     #compass-ring {
       width: 100%; height: 100%;
@@ -87,7 +82,6 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.5); z-index: 100;
     }
 
-    /* Loading UI */
     #loading-overlay { 
       position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
       background: var(--dark-navy); display: none; flex-direction: column; 
@@ -151,7 +145,8 @@ import { GLTFLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/GL
 import { DRACOLoader } from "https://esm.sh/three@0.160.0/examples/jsm/loaders/DRACOLoader.js";
 
 const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
+// Increased far plane to 10000 so background doesn't get cut off
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
 const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -159,7 +154,6 @@ document.body.appendChild(renderer.domElement);
 
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.1;
 
 scene.add(new THREE.AmbientLight(0xffffff, 2.5));
 const sun = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -176,19 +170,18 @@ const loader = new GLTFLoader();
 loader.setDRACOLoader(draco);
 
 let currentModel = null;
-let backgroundModel = null;
 let defaultCameraPos = new THREE.Vector3(); 
 let defaultTarget = new THREE.Vector3();
 
-const needleWrapper = document.getElementById('needle-wrapper');
-const progressBar = document.getElementById('progress-bar');
-const welcomeScreen = document.getElementById('welcome-screen');
-
-// Load the NEW Background immediately
+// LOAD BACKGROUND 2 - Centered Automatically
 loader.load('LowBackground_2.glb', (gltf) => {
-    backgroundModel = gltf.scene;
-    scene.add(backgroundModel);
-});
+    const bg = gltf.scene;
+    const box = new THREE.Box3().setFromObject(bg);
+    const center = box.getCenter(new THREE.Vector3());
+    // Move the background so its center is at 0,0,0
+    bg.position.set(-center.x, -center.y, -center.z);
+    scene.add(bg);
+}, undefined, (err) => console.error("Background load failed", err));
 
 function resetCamera() {
     controls.reset(); 
@@ -199,13 +192,9 @@ function resetCamera() {
 
 function loadModel(filename) {
     if (currentModel) scene.remove(currentModel);
-    
-    // Fade out the welcome screen on first selection
-    welcomeScreen.style.opacity = '0';
-    setTimeout(() => welcomeScreen.style.display = 'none', 500);
-
+    document.getElementById('welcome-screen').style.opacity = '0';
+    setTimeout(() => document.getElementById('welcome-screen').style.display = 'none', 500);
     document.getElementById('loading-overlay').style.display = 'flex';
-    progressBar.style.width = '0%';
 
     loader.load(filename, (gltf) => {
         currentModel = gltf.scene;
@@ -213,54 +202,21 @@ function loadModel(filename) {
         const center = box.getCenter(new THREE.Vector3());
         const size = box.getSize(new THREE.Vector3());
 
-        // Center and place on ground
         currentModel.position.set(-center.x, -box.min.y, -center.z);
         scene.add(currentModel);
 
         const maxDim = Math.max(size.x, size.z);
-        
-        // Flipped and Rotated logic: 
-        // Placing camera on the Z axis aligns North (red) to point UP on the screen
-        defaultCameraPos.set(0, size.y * 0.7, maxDim * 1.2); 
+        // Snap North Up (Z-axis alignment)
+        defaultCameraPos.set(0, size.y * 0.7, maxDim * 1.5); 
         defaultTarget.set(0, size.y / 3, 0);
         
         resetCamera();
         document.getElementById('loading-overlay').style.display = 'none';
     }, 
     (xhr) => {
-        if (xhr.lengthComputable) {
-            const percent = Math.min((xhr.loaded / xhr.total) * 100, 100);
-            progressBar.style.width = percent + '%';
-        } else {
-            progressBar.style.width = '95%';
-        }
+        const p = Math.min((xhr.loaded / (xhr.total || 1000000)) * 100, 100);
+        document.getElementById('progress-bar').style.width = p + '%';
     });
 }
 
-document.getElementById('grid-toggle').onchange = (e) => grid.visible = e.target.checked;
-document.getElementById('reset-btn').onclick = resetCamera;
-document.getElementById('compass-hud').onclick = resetCamera; 
-document.getElementById('model-select').onchange = (e) => loadModel(e.target.value);
-
-window.addEventListener('keydown', (e) => { if (e.key.toLowerCase() === 'r') resetCamera(); });
-
-window.onresize = () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-};
-
-function animate() {
-    requestAnimationFrame(animate);
-    controls.update();
-
-    // Rotates the needle based on camera position relative to the Z-axis (North)
-    const angle = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
-    needleWrapper.style.transform = `rotate(${angle}rad)`;
-
-    renderer.render(scene, camera);
-}
-animate();
-</script>
-</body>
-</html>
+document.getElementById('grid-toggle').onchange = (e) => grid.visible =
